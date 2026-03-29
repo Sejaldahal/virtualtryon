@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { Settings, Sparkles, Zap, Palette, Wand2 } from "lucide-react";
+ import { Settings, Sparkles, Zap, Palette, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const phrases = [
@@ -33,15 +33,7 @@ const LandingPage = () => {
       {/* Gradient background */}
       <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-accent/20" />
 
-      {/* Settings Icon */}
-      <button
-        onClick={() => navigate("/settings")}
-        className="absolute top-6 right-6 z-20 p-3 rounded-full glass hover:bg-foreground/10 transition-all duration-300 group"
-        aria-label="Settings"
-      >
-        <Settings className="w-5 h-5 text-foreground/70 group-hover:text-foreground group-hover:rotate-90 transition-all duration-300" />
-      </button>
-
+    
       {/* Main Content - Split Layout */}
       <div className="relative z-10 flex min-h-screen">
         {/* Left Side - Text Content */}
@@ -50,7 +42,7 @@ const LandingPage = () => {
           <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full glass border border-foreground/10 w-fit mb-8">
             <Sparkles className="w-4 h-4 text-primary animate-pulse" />
             <span className="text-xs tracking-[0.3em] uppercase text-muted-foreground font-medium">
-              AI-Powered Fashion
+              Virtual Try-On
             </span>
           </div>
 
@@ -88,10 +80,7 @@ const LandingPage = () => {
               <Palette className="w-4 h-4 text-accent-foreground" />
               <span className="text-sm text-muted-foreground">Custom Styles</span>
             </div>
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-foreground/5 border border-foreground/10">
-              <Wand2 className="w-4 h-4 text-primary" />
-              <span className="text-sm text-muted-foreground">AI Suggestions</span>
-            </div>
+            
           </div>
 
           {/* CTA Button */}
@@ -118,7 +107,7 @@ const LandingPage = () => {
                 </svg>
               </span>
             </Button>
-            <span className="text-xs text-muted-foreground/60 tracking-wide ml-2">No login required • Free trial</span>
+            
           </div>
         </div>
 
