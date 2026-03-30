@@ -1,962 +1,454 @@
-// // import { useState, useRef } from "react";
-// // import { useNavigate } from "react-router-dom";
-// // import { supabase } from "@/integrations/supabase/client";
-// // import { Button } from "@/components/ui/button";
-// // import { Textarea } from "@/components/ui/textarea";
-// // import { useToast } from "@/hooks/use-toast";
-// // import {
-// //   Settings,
-// //   Upload,
-// //   Sparkles,
-// //   Download,
-// //   Loader2,
-// //   User,
-// //   Shirt,
-// //   X,
-// // } from "lucide-react";
-
-// // const PRESET_STYLES = ["Casual", "Formal", "Traditional", "Streetwear", "Party"];
-
-// // // Sample model images (silhouettes/placeholders)
-// // const SAMPLE_MODELS = [
-// //   { id: 1, name: "Model 1", image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=300&fit=crop&crop=face" },
-// //   { id: 2, name: "Model 2", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=300&fit=crop&crop=face" },
-// //   { id: 3, name: "Model 3", image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=300&fit=crop&crop=face" },
-// //   { id: 4, name: "Model 4", image: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&h=300&fit=crop&crop=face" },
-// // ];
-
-// // // Sample clothing items
-// // const SAMPLE_CLOTHES = [
-// //   { id: 1, name: "Classic Blazer", category: "Formal", image: "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=200&h=250&fit=crop" },
-// //   { id: 2, name: "Summer Dress", category: "Casual", image: "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=200&h=250&fit=crop" },
-// //   { id: 3, name: "Denim Jacket", category: "Streetwear", image: "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=200&h=250&fit=crop" },
-// //   { id: 4, name: "Silk Saree", category: "Traditional", image: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=200&h=250&fit=crop" },
-// //   { id: 5, name: "Party Gown", category: "Party", image: "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=200&h=250&fit=crop" },
-// //   { id: 6, name: "Casual Tee", category: "Casual", image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=200&h=250&fit=crop" },
-// // ];
-
-// // const TryOn = () => {
-// //   const navigate = useNavigate();
-// //   const { toast } = useToast();
-
-// //   const [personImage, setPersonImage] = useState<string | null>(null);
-// //   const [clothingImage, setClothingImage] = useState<string | null>(null);
-// //   const [prompt, setPrompt] = useState("");
-// //   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
-// //   const [generating, setGenerating] = useState(false);
-// //   const [result, setResult] = useState<string | null>(null);
-// //   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
-
-// //   const personInputRef = useRef<HTMLInputElement>(null);
-// //   const clothingInputRef = useRef<HTMLInputElement>(null);
-
-// //   const handleImageUpload = (
-// //     e: React.ChangeEvent<HTMLInputElement>,
-// //     type: "person" | "clothing"
-// //   ) => {
-// //     const file = e.target.files?.[0];
-// //     if (file) {
-// //       const reader = new FileReader();
-// //       reader.onload = (event) => {
-// //         const dataUrl = event.target?.result as string;
-// //         if (type === "person") {
-// //           setPersonImage(dataUrl);
-// //         } else {
-// //           setClothingImage(dataUrl);
-// //         }
-// //       };
-// //       reader.readAsDataURL(file);
-// //     }
-// //   };
-
-// //   const handleSelectSampleModel = (imageUrl: string) => {
-// //     setPersonImage(imageUrl);
-// //     toast({
-// //       title: "Model selected",
-// //       description: "Sample model has been applied.",
-// //     });
-// //   };
-
-// //   const handleSelectSampleClothing = (item: typeof SAMPLE_CLOTHES[0]) => {
-// //     setClothingImage(item.image);
-// //     setSelectedStyle(item.category);
-// //     toast({
-// //       title: "Clothing selected",
-// //       description: `${item.name} has been applied.`,
-// //     });
-// //   };
-
-// //   const handleGenerate = async () => {
-// //     if (!personImage && !clothingImage && !prompt && !selectedStyle) {
-// //       toast({
-// //         title: "Missing input",
-// //         description: "Please upload images or describe your desired style.",
-// //         variant: "destructive",
-// //       });
-// //       return;
-// //     }
-
-// //     setGenerating(true);
-// //     setAiSuggestion(null);
-
-// //     try {
-// //       const fullPrompt = [
-// //         selectedStyle ? `Style: ${selectedStyle}` : "",
-// //         prompt,
-// //       ]
-// //         .filter(Boolean)
-// //         .join(". ");
-
-// //       const { data, error } = await supabase.functions.invoke("style-advisor", {
-// //         body: {
-// //           prompt: fullPrompt || "Suggest a fashionable outfit",
-// //           hasPersonImage: !!personImage,
-// //           hasClothingImage: !!clothingImage,
-// //         },
-// //       });
-
-// //       if (error) {
-// //         throw error;
-// //       }
-
-// //       setAiSuggestion(data.suggestion);
-      
-// //       if (personImage || clothingImage) {
-// //         setResult(personImage || clothingImage);
-// //       }
-
-// //       toast({
-// //         title: "Styling complete!",
-// //         description: "Your AI-powered fashion suggestions are ready.",
-// //       });
-// //     } catch (err) {
-// //       console.error("Generation error:", err);
-// //       toast({
-// //         title: "Generation failed",
-// //         description: "Please try again later.",
-// //         variant: "destructive",
-// //       });
-// //     } finally {
-// //       setGenerating(false);
-// //     }
-// //   };
-
-// //   const handleDownload = () => {
-// //     if (result) {
-// //       const link = document.createElement("a");
-// //       link.href = result;
-// //       link.download = "virtual-tryon-result.png";
-// //       document.body.appendChild(link);
-// //       link.click();
-// //       document.body.removeChild(link);
-// //       toast({
-// //         title: "Downloaded",
-// //         description: "Your styled look has been saved.",
-// //       });
-// //     }
-// //   };
-
-// //   // Filter clothes by selected style
-// //   const filteredClothes = selectedStyle
-// //     ? SAMPLE_CLOTHES.filter((c) => c.category === selectedStyle)
-// //     : SAMPLE_CLOTHES;
-
-// //   return (
-// //     <div className="min-h-screen bg-background">
-// //       {/* Header */}
-// //       <header className="fixed top-0 left-0 right-0 z-40 glass-strong">
-// //         <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4">
-// //           {/* Back Button */}
-// //           <button
-// //             onClick={() => navigate("/")}
-// //             className="flex items-center gap-2 px-4 py-2 rounded-full hover:bg-accent transition-colors group"
-// //           >
-// //             <svg
-// //               className="w-5 h-5 text-muted-foreground group-hover:-translate-x-1 transition-transform"
-// //               fill="none"
-// //               viewBox="0 0 24 24"
-// //               stroke="currentColor"
-// //             >
-// //               <path
-// //                 strokeLinecap="round"
-// //                 strokeLinejoin="round"
-// //                 strokeWidth={1.5}
-// //                 d="M7 16l-4-4m0 0l4-4m-4 4h18"
-// //               />
-// //             </svg>
-// //             <span className="text-sm text-muted-foreground hidden sm:inline">Back</span>
-// //           </button>
-
-// //           {/* Title - Centered */}
-// //           <h1 className="text-lg md:text-xl font-display font-light tracking-wide absolute left-1/2 -translate-x-1/2">
-// //             Virtual Try-On
-// //           </h1>
-
-// //           {/* Settings */}
-// //           <button
-// //             onClick={() => navigate("/settings")}
-// //             className="p-2 rounded-full hover:bg-accent transition-colors"
-// //             aria-label="Settings"
-// //           >
-// //             <Settings className="w-5 h-5 text-muted-foreground" />
-// //           </button>
-// //         </div>
-// //       </header>
-
-// //       {/* Main Content */}
-// //       <main className="pt-20 pb-8 px-4 md:px-6 lg:px-8 max-w-7xl mx-auto">
-// //         {/* Sample Models Bar - Top */}
-// //         <div className="mb-6">
-// //           <div className="flex items-center justify-between mb-3">
-// //             <h2 className="text-sm font-medium text-muted-foreground">Choose a Model</h2>
-// //             <span className="text-xs text-muted-foreground/60">or upload your own</span>
-// //           </div>
-// //           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-// //             {SAMPLE_MODELS.map((model) => (
-// //               <button
-// //                 key={model.id}
-// //                 onClick={() => handleSelectSampleModel(model.image)}
-// //                 className={`flex-shrink-0 w-14 h-18 md:w-16 md:h-20 rounded-xl overflow-hidden border-2 transition-all hover:scale-105 ${
-// //                   personImage === model.image
-// //                     ? "border-primary ring-2 ring-primary/30"
-// //                     : "border-border/50 hover:border-foreground/30"
-// //                 }`}
-// //               >
-// //                 <img
-// //                   src={model.image}
-// //                   alt={model.name}
-// //                   className="w-full h-full object-cover"
-// //                 />
-// //               </button>
-// //             ))}
-// //             <button
-// //               onClick={() => personInputRef.current?.click()}
-// //               className="flex-shrink-0 w-14 h-18 md:w-16 md:h-20 rounded-xl border-2 border-dashed border-border/50 hover:border-foreground/30 flex items-center justify-center transition-colors"
-// //             >
-// //               <Upload className="w-5 h-5 text-muted-foreground" />
-// //             </button>
-// //           </div>
-// //         </div>
-
-// //         {/* Selected Items Row */}
-// //         <div className="flex items-center justify-center gap-6 mb-6 p-4 glass rounded-2xl">
-// //           {/* Person Thumbnail */}
-// //           <div className="flex flex-col items-center gap-2">
-// //             <div
-// //               onClick={() => personInputRef.current?.click()}
-// //               className="w-16 h-16 md:w-20 md:h-20 rounded-xl bg-accent/50 cursor-pointer overflow-hidden flex items-center justify-center hover:bg-accent transition-colors border border-border/50"
-// //             >
-// //               {personImage ? (
-// //                 <img
-// //                   src={personImage}
-// //                   alt="Person"
-// //                   className="w-full h-full object-cover"
-// //                 />
-// //               ) : (
-// //                 <User className="w-6 h-6 text-muted-foreground" />
-// //               )}
-// //             </div>
-// //             <span className="text-xs text-muted-foreground">Model</span>
-// //           </div>
-
-// //           {/* Plus icon */}
-// //           <div className="text-2xl text-muted-foreground/50">+</div>
-
-// //           {/* Clothing Thumbnail */}
-// //           <div className="flex flex-col items-center gap-2">
-// //             <div
-// //               onClick={() => clothingInputRef.current?.click()}
-// //               className="w-16 h-16 md:w-20 md:h-20 rounded-xl bg-accent/50 cursor-pointer overflow-hidden flex items-center justify-center hover:bg-accent transition-colors border border-border/50"
-// //             >
-// //               {clothingImage ? (
-// //                 <img
-// //                   src={clothingImage}
-// //                   alt="Clothing"
-// //                   className="w-full h-full object-cover"
-// //                 />
-// //               ) : (
-// //                 <Shirt className="w-6 h-6 text-muted-foreground" />
-// //               )}
-// //             </div>
-// //             <span className="text-xs text-muted-foreground">Outfit</span>
-// //           </div>
-
-// //           {/* Equals icon */}
-// //           <div className="text-2xl text-muted-foreground/50">=</div>
-
-// //           {/* Result preview mini */}
-// //           <div className="flex flex-col items-center gap-2">
-// //             <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center">
-// //               {result ? (
-// //                 <img
-// //                   src={result}
-// //                   alt="Result"
-// //                   className="w-full h-full object-cover rounded-xl"
-// //                 />
-// //               ) : (
-// //                 <Sparkles className="w-6 h-6 text-primary/50" />
-// //               )}
-// //             </div>
-// //             <span className="text-xs text-muted-foreground">Result</span>
-// //           </div>
-// //         </div>
-
-// //         {/* Hidden file inputs */}
-// //         <input
-// //           ref={personInputRef}
-// //           type="file"
-// //           accept="image/*"
-// //           onChange={(e) => handleImageUpload(e, "person")}
-// //           className="hidden"
-// //         />
-// //         <input
-// //           ref={clothingInputRef}
-// //           type="file"
-// //           accept="image/*"
-// //           onChange={(e) => handleImageUpload(e, "clothing")}
-// //           className="hidden"
-// //         />
-
-// //         {/* Main Grid */}
-// //         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-// //           {/* Left Panel - Uploads */}
-// //           <div className="space-y-4">
-// //             <div className="glass rounded-2xl p-5">
-// //               <h2 className="text-sm font-medium mb-4 flex items-center gap-2">
-// //                 <Upload className="w-4 h-4" />
-// //                 Upload Images
-// //               </h2>
-
-// //               <div className="space-y-3">
-// //                 <button
-// //                   onClick={() => personInputRef.current?.click()}
-// //                   className="w-full p-4 rounded-xl border border-dashed border-border hover:border-foreground/30 transition-colors flex items-center gap-3"
-// //                 >
-// //                   <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center">
-// //                     <User className="w-5 h-5 text-muted-foreground" />
-// //                   </div>
-// //                   <div className="text-left">
-// //                     <p className="text-sm font-medium">Person Image</p>
-// //                     <p className="text-xs text-muted-foreground">
-// //                       {personImage ? "Image uploaded" : "Upload your photo"}
-// //                     </p>
-// //                   </div>
-// //                   {personImage && (
-// //                     <button
-// //                       onClick={(e) => {
-// //                         e.stopPropagation();
-// //                         setPersonImage(null);
-// //                       }}
-// //                       className="ml-auto p-1 hover:bg-destructive/20 rounded"
-// //                     >
-// //                       <X className="w-4 h-4 text-destructive" />
-// //                     </button>
-// //                   )}
-// //                 </button>
-
-// //                 <button
-// //                   onClick={() => clothingInputRef.current?.click()}
-// //                   className="w-full p-4 rounded-xl border border-dashed border-border hover:border-foreground/30 transition-colors flex items-center gap-3"
-// //                 >
-// //                   <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center">
-// //                     <Shirt className="w-5 h-5 text-muted-foreground" />
-// //                   </div>
-// //                   <div className="text-left">
-// //                     <p className="text-sm font-medium">Clothing Image</p>
-// //                     <p className="text-xs text-muted-foreground">
-// //                       {clothingImage ? "Image uploaded" : "Upload outfit"}
-// //                     </p>
-// //                   </div>
-// //                   {clothingImage && (
-// //                     <button
-// //                       onClick={(e) => {
-// //                         e.stopPropagation();
-// //                         setClothingImage(null);
-// //                       }}
-// //                       className="ml-auto p-1 hover:bg-destructive/20 rounded"
-// //                     >
-// //                       <X className="w-4 h-4 text-destructive" />
-// //                     </button>
-// //                   )}
-// //                 </button>
-// //               </div>
-// //             </div>
-// //           </div>
-
-// //           {/* Center - Preview */}
-// //           <div className="lg:col-span-1">
-// //             <div className="glass rounded-2xl p-5 h-full min-h-[400px] flex flex-col">
-// //               <h2 className="text-sm font-medium mb-4 text-center">Preview</h2>
-
-// //               <div className="flex-1 flex items-center justify-center rounded-xl border border-dashed border-border/50 overflow-hidden bg-muted/20">
-// //                 {generating ? (
-// //                   <div className="text-center">
-// //                     <Loader2 className="w-10 h-10 animate-spin text-muted-foreground mx-auto mb-3" />
-// //                     <p className="text-sm text-muted-foreground">
-// //                       Generating your look...
-// //                     </p>
-// //                   </div>
-// //                 ) : result ? (
-// //                   <img
-// //                     src={result}
-// //                     alt="Generated result"
-// //                     className="w-full h-full object-contain"
-// //                   />
-// //                 ) : (
-// //                   <div className="text-center p-8">
-// //                     <Sparkles className="w-10 h-10 text-muted-foreground/50 mx-auto mb-3" />
-// //                     <p className="text-sm text-muted-foreground">
-// //                       Your styled look will appear here
-// //                     </p>
-// //                   </div>
-// //                 )}
-// //               </div>
-
-// //               {result && (
-// //                 <Button
-// //                   onClick={handleDownload}
-// //                   variant="outline"
-// //                   className="mt-4 w-full"
-// //                 >
-// //                   <Download className="w-4 h-4 mr-2" />
-// //                   Download
-// //                 </Button>
-// //               )}
-// //             </div>
-// //           </div>
-
-// //           {/* Right Panel - AI Styling + Clothes */}
-// //           <div className="space-y-4">
-// //             {/* AI Styling */}
-// //             <div className="glass rounded-2xl p-5">
-// //               <h2 className="text-sm font-medium mb-4 flex items-center gap-2">
-// //                 <Sparkles className="w-4 h-4" />
-// //                 AI Styling
-// //               </h2>
-
-// //               <Textarea
-// //                 value={prompt}
-// //                 onChange={(e) => setPrompt(e.target.value)}
-// //                 placeholder="Describe the outfit style, fit, color, or design..."
-// //                 className="min-h-[80px] bg-background/50 border-border/50 resize-none mb-4"
-// //               />
-
-// //               <div className="mb-4">
-// //                 <p className="text-xs text-muted-foreground mb-2">
-// //                   Quick Styles
-// //                 </p>
-// //                 <div className="flex flex-wrap gap-2">
-// //                   {PRESET_STYLES.map((style) => (
-// //                     <button
-// //                       key={style}
-// //                       onClick={() =>
-// //                         setSelectedStyle(
-// //                           selectedStyle === style ? null : style
-// //                         )
-// //                       }
-// //                       className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
-// //                         selectedStyle === style
-// //                           ? "bg-foreground text-background border-foreground"
-// //                           : "border-border hover:border-foreground/50"
-// //                       }`}
-// //                     >
-// //                       {style}
-// //                     </button>
-// //                   ))}
-// //                 </div>
-// //               </div>
-
-// //               <Button
-// //                 onClick={handleGenerate}
-// //                 disabled={generating}
-// //                 className="w-full glow-button"
-// //               >
-// //                 {generating ? (
-// //                   <>
-// //                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-// //                     Generating...
-// //                   </>
-// //                 ) : (
-// //                   <>
-// //                     <Sparkles className="w-4 h-4 mr-2" />
-// //                     Generate Look
-// //                   </>
-// //                 )}
-// //               </Button>
-// //             </div>
-
-// //             {/* Sample Clothes */}
-// //             <div className="glass rounded-2xl p-5">
-// //               <div className="flex items-center justify-between mb-4">
-// //                 <h2 className="text-sm font-medium flex items-center gap-2">
-// //                   <Shirt className="w-4 h-4" />
-// //                   Sample Clothes
-// //                 </h2>
-// //                 {selectedStyle && (
-// //                   <span className="text-xs px-2 py-1 rounded-full bg-foreground/10 text-muted-foreground">
-// //                     {selectedStyle}
-// //                   </span>
-// //                 )}
-// //               </div>
-
-// //               <div className="grid grid-cols-3 gap-2">
-// //                 {filteredClothes.map((item) => (
-// //                   <button
-// //                     key={item.id}
-// //                     onClick={() => handleSelectSampleClothing(item)}
-// //                     className={`aspect-[3/4] rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${
-// //                       clothingImage === item.image
-// //                         ? "border-primary ring-2 ring-primary/30"
-// //                         : "border-border/30 hover:border-foreground/30"
-// //                     }`}
-// //                   >
-// //                     <img
-// //                       src={item.image}
-// //                       alt={item.name}
-// //                       className="w-full h-full object-cover"
-// //                     />
-// //                   </button>
-// //                 ))}
-// //               </div>
-// //               <p className="text-xs text-muted-foreground/60 mt-3 text-center">
-// //                 Click to select or upload your own
-// //               </p>
-// //             </div>
-
-// //             {/* AI Suggestion */}
-// //             {aiSuggestion && (
-// //               <div className="glass rounded-2xl p-5 animate-fade-in">
-// //                 <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
-// //                   <Sparkles className="w-4 h-4 text-primary" />
-// //                   AI Stylist Says
-// //                 </h3>
-// //                 <p className="text-sm text-muted-foreground leading-relaxed">
-// //                   {aiSuggestion}
-// //                 </p>
-// //               </div>
-// //             )}
-// //           </div>
-// //         </div>
-// //       </main>
-// //     </div>
-// //   );
-// // };
-
-// // export default TryOn;
-
-// import { useState, useRef } from "react";
-// import { Button } from "@/components/ui/button";
-// import { Textarea } from "@/components/ui/textarea";
-// import {
-//   Upload,
-//   Sparkles,
-//   User,
-//   Shirt,
-//   X,
-// } from "lucide-react";
-
-// const SAMPLE_MODELS = [
-//   { id: 1, image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200" },
-//   { id: 2, image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200" },
-//   { id: 3, image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200" },
-// ];
-
-// const SAMPLE_CLOTHES = [
-//   { id: 1, image: "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=200" },
-//   { id: 2, image: "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=200" },
-//   { id: 3, image: "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=200" },
-// ];
-
-// export default function TryOn() {
-//   const [personImage, setPersonImage] = useState<string | null>(null);
-//   const [clothingImage, setClothingImage] = useState<string | null>(null);
-//   const [prompt, setPrompt] = useState("");
-//   const [result, setResult] = useState<string | null>(null);
-
-//   const personRef = useRef<HTMLInputElement>(null);
-//   const clothRef = useRef<HTMLInputElement>(null);
-
-//   const handleUpload = (
-//     e: React.ChangeEvent<HTMLInputElement>,
-//     type: "person" | "cloth"
-//   ) => {
-//     const file = e.target.files?.[0];
-//     if (!file) return;
-
-//     const reader = new FileReader();
-//     reader.onload = () => {
-//       if (type === "person") setPersonImage(reader.result as string);
-//       else setClothingImage(reader.result as string);
-//     };
-//     reader.readAsDataURL(file);
-//   };
-
-//   const generatePreview = () => {
-//     // TEMP LOGIC (frontend only)
-//     setResult(personImage || clothingImage || null);
-//   };
-
-//   return (
-//     <div className="min-h-screen bg-background px-4 py-6 max-w-6xl mx-auto">
-
-//       {/* HEADER */}
-//       <h1 className="text-2xl font-semibold text-center mb-6">
-//         Virtual Try-On
-//       </h1>
-
-//       {/* STEP 1: MODEL SELECTION */}
-//       <div className="mb-6">
-//         <h2 className="text-sm text-muted-foreground mb-2">Choose Model</h2>
-
-//         <div className="flex gap-3 overflow-x-auto">
-//           {SAMPLE_MODELS.map((m) => (
-//             <img
-//               key={m.id}
-//               src={m.image}
-//               onClick={() => setPersonImage(m.image)}
-//               className={`w-16 h-20 rounded-lg object-cover cursor-pointer border-2 ${
-//                 personImage === m.image ? "border-primary" : "border-transparent"
-//               }`}
-//             />
-//           ))}
-
-//           <button
-//             onClick={() => personRef.current?.click()}
-//             className="w-16 h-20 border-dashed border flex items-center justify-center rounded-lg"
-//           >
-//             <Upload size={18} />
-//           </button>
-//         </div>
-//       </div>
-
-//       {/* STEP 2: CLOTHING */}
-//       <div className="mb-6">
-//         <h2 className="text-sm text-muted-foreground mb-2">Choose Outfit</h2>
-
-//         <div className="flex gap-3 overflow-x-auto">
-//           {SAMPLE_CLOTHES.map((c) => (
-//             <img
-//               key={c.id}
-//               src={c.image}
-//               onClick={() => setClothingImage(c.image)}
-//               className={`w-16 h-20 rounded-lg object-cover cursor-pointer border-2 ${
-//                 clothingImage === c.image ? "border-primary" : "border-transparent"
-//               }`}
-//             />
-//           ))}
-
-//           <button
-//             onClick={() => clothRef.current?.click()}
-//             className="w-16 h-20 border-dashed border flex items-center justify-center rounded-lg"
-//           >
-//             <Upload size={18} />
-//           </button>
-//         </div>
-//       </div>
-
-//       {/* STEP 3: PROMPT */}
-//       <div className="mb-6">
-//         <Textarea
-//           placeholder="Describe style (optional)..."
-//           value={prompt}
-//           onChange={(e) => setPrompt(e.target.value)}
-//         />
-//       </div>
-
-//       {/* PREVIEW AREA */}
-//       <div className="mb-6 border rounded-xl h-64 flex items-center justify-center bg-muted/20">
-//         {result ? (
-//           <img src={result} className="h-full object-contain" />
-//         ) : (
-//           <div className="text-center text-muted-foreground">
-//             <Sparkles className="mx-auto mb-2" />
-//             Preview will appear here
-//           </div>
-//         )}
-//       </div>
-
-//       {/* ACTION */}
-//       <Button onClick={generatePreview} className="w-full">
-//         Generate Look
-//       </Button>
-
-//       {/* HIDDEN INPUTS */}
-//       <input
-//         ref={personRef}
-//         type="file"
-//         hidden
-//         onChange={(e) => handleUpload(e, "person")}
-//       />
-//       <input
-//         ref={clothRef}
-//         type="file"
-//         hidden
-//         onChange={(e) => handleUpload(e, "cloth")}
-//       />
-//     </div>
-//   );
-// }
-
-// import { useState, useRef } from "react";
-// import { Button } from "@/components/ui/button";
-// import { Upload, Sparkles, User, Shirt } from "lucide-react";
-
-// const SAMPLE_MODELS = [
-//   { id: 1, image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200" },
-//   { id: 2, image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200" },
-//   { id: 3, image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200" },
-// ];
-
-// const SAMPLE_CLOTHES = [
-//   { id: 1, image: "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=200" },
-//   { id: 2, image: "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=200" },
-//   { id: 3, image: "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=200" },
-// ];
-
-// export default function TryOn() {
-//   const [personImage, setPersonImage] = useState<string | null>(null);
-//   const [clothingImage, setClothingImage] = useState<string | null>(null);
-//   const [result, setResult] = useState<string | null>(null);
-
-//   const personRef = useRef<HTMLInputElement>(null);
-//   const clothRef = useRef<HTMLInputElement>(null);
-
-//   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>, type: "person" | "cloth") => {
-//     const file = e.target.files?.[0];
-//     if (!file) return;
-//     const reader = new FileReader();
-//     reader.onload = () => {
-//       if (type === "person") setPersonImage(reader.result as string);
-//       else setClothingImage(reader.result as string);
-//     };
-//     reader.readAsDataURL(file);
-//   };
-
-//   const generatePreview = () => {
-//     if (!personImage && !clothingImage) return;
-//     setResult(personImage || clothingImage || null);
-//   };
-
-//   return (
-//     <div className="min-h-screen bg-background px-4 py-6 max-w-6xl mx-auto">
-//       <h1 className="text-2xl font-semibold text-center mb-6">Virtual Try-On</h1>
-
-//       {/* TOP SELECTION BARS */}
-//       <div className="mb-6">
-//         <h2 className="text-sm text-muted-foreground mb-2">Choose Model</h2>
-//         <div className="flex gap-3 overflow-x-auto mb-4">
-//           {SAMPLE_MODELS.map((m) => (
-//             <img
-//               key={m.id}
-//               src={m.image}
-//               onClick={() => setPersonImage(m.image)}
-//               className={`w-20 h-28 rounded-lg object-cover cursor-pointer border-2 ${
-//                 personImage === m.image ? "border-primary" : "border-transparent"
-//               }`}
-//             />
-//           ))}
-//           <button
-//             onClick={() => personRef.current?.click()}
-//             className="w-20 h-28 border-dashed border flex items-center justify-center rounded-lg"
-//           >
-//             <Upload size={24} />
-//           </button>
-//         </div>
-
-//         <h2 className="text-sm text-muted-foreground mb-2">Choose Outfit</h2>
-//         <div className="flex gap-3 overflow-x-auto">
-//           {SAMPLE_CLOTHES.map((c) => (
-//             <img
-//               key={c.id}
-//               src={c.image}
-//               onClick={() => setClothingImage(c.image)}
-//               className={`w-20 h-28 rounded-lg object-cover cursor-pointer border-2 ${
-//                 clothingImage === c.image ? "border-primary" : "border-transparent"
-//               }`}
-//             />
-//           ))}
-//           <button
-//             onClick={() => clothRef.current?.click()}
-//             className="w-20 h-28 border-dashed border flex items-center justify-center rounded-lg"
-//           >
-//             <Upload size={24} />
-//           </button>
-//         </div>
-//       </div>
-
-//       {/* MINI PREVIEW BAR (Model + Clothing) */}
-//       {(personImage || clothingImage) && (
-//         <div className="flex items-center justify-center gap-4 mb-6">
-//           {/* Model */}
-//           <div className="w-24 h-32 rounded-lg border overflow-hidden flex items-center justify-center">
-//             {personImage ? <img src={personImage} className="w-full h-full object-cover" /> : <User size={24} />}
-//           </div>
-//           <span className="text-2xl">+</span>
-//           {/* Clothing */}
-//           <div className="w-24 h-32 rounded-lg border overflow-hidden flex items-center justify-center">
-//             {clothingImage ? <img src={clothingImage} className="w-full h-full object-cover" /> : <Shirt size={24} />}
-//           </div>
-//         </div>
-//       )}
-
-//       {/* GENERATE BUTTON */}
-//       <Button onClick={generatePreview} className="w-full mb-6">
-//         Generate Look
-//       </Button>
-
-//       {/* BIG PREVIEW AREA */}
-//       <div className="border rounded-xl h-96 flex items-center justify-center bg-muted/20">
-//         {result ? (
-//           <div className="flex items-center justify-center gap-4">
-//             {personImage && <img src={personImage} className="h-full object-contain rounded-lg" />}
-//             {clothingImage && <img src={clothingImage} className="h-full object-contain rounded-lg" />}
-//           </div>
-//         ) : (
-//           <div className="text-center text-muted-foreground">
-//             <Sparkles className="mx-auto mb-2" size={36} />
-//             Your styled look will appear here
-//           </div>
-//         )}
-//       </div>
-
-//       {/* HIDDEN INPUTS */}
-//       <input ref={personRef} type="file" hidden onChange={(e) => handleUpload(e, "person")} />
-//       <input ref={clothRef} type="file" hidden onChange={(e) => handleUpload(e, "cloth")} />
-//     </div>
-//   );
-// }
-
 import { useState, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { Upload, Sparkles, User, Shirt } from "lucide-react";
 
-const SAMPLE_MODELS = [
-  { id: 1, image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200" },
-  { id: 2, image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200" },
-  { id: 3, image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200" },
-];
+// ── Dataset ──────────────────────────────────────────────────────────────────
+// Replace these URLs with your own hosted/local dataset image paths.
+// All asset data lives here — one place to update.
+const DATASET = {
+  models: [
+    { id: "m1", label: "model1",  url: new URL("../components/dataset/models/00674_00.jpg", import.meta.url).href },
+    { id: "m2", label: "model2", url: new URL("../components/dataset/models/00124_00.jpg", import.meta.url).href },
+    { id: "m3", label: "model3",   url: new URL("../components/dataset/models/00153_00.jpg", import.meta.url).href },
+    { id: "m4", label: "model4",    url: new URL("../components/dataset/models/00586_00.jpg", import.meta.url).href },
+  ],
+  clothes: [
+    { id: "c1", label: "1",    url: new URL("../components/dataset/clothes/00000_00.jpg", import.meta.url).href },
+    { id: "c2", label: "2", url: new URL("../components/dataset/clothes/00024_00.jpg", import.meta.url).href },
+    { id: "c3", label: "3", url: new URL("../components/dataset/clothes/00066_00.jpg", import.meta.url).href },
+    { id: "c4", label: "4",     url: new URL("../components/dataset/clothes/00134_00.jpg", import.meta.url).href },
+  ],
+};
 
-const SAMPLE_CLOTHES = [
-  { id: 1, image: "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=200" },
-  { id: 2, image: "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=200" },
-  { id: 3, image: "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=200" },
-];
+// ── Config ───────────────────────────────────────────────────────────────────
+const API = "http://192.168.50.211:5000";
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+const resizeImage = (file: File, maxW = 512, maxH = 512): Promise<string> =>
+  new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width: w, height: h } = img;
+      if (w > maxW) { h = (h * maxW) / w; w = maxW; }
+      if (h > maxH) { w = (w * maxH) / h; h = maxH; }
+      const c = document.createElement("canvas");
+      c.width = w; c.height = h;
+      c.getContext("2d")!.drawImage(img, 0, 0, w, h);
+      resolve(c.toDataURL("image/jpeg"));
+    };
+    img.src = URL.createObjectURL(file);
+  });
+
+async function urlToBase64(url: string): Promise<string> {
+  const res = await fetch(url);
+  const blob = await res.blob();
+  return new Promise((resolve) => {
+    const r = new FileReader();
+    r.onloadend = () => resolve((r.result as string).split(",")[1]);
+    r.readAsDataURL(blob);
+  });
+}
+
+// ── Types ────────────────────────────────────────────────────────────────────
+type Asset = { id: string; label: string; url: string };
+
+// ── Component ────────────────────────────────────────────────────────────────
 export default function TryOn() {
-  const [personImage, setPersonImage] = useState<string | null>(null);
-  const [clothingImage, setClothingImage] = useState<string | null>(null);
-  const [result, setResult] = useState<string | null>(null);
+  const [personAsset, setPersonAsset]     = useState<Asset | null>(null);
+  const [clothAsset, setClothAsset]       = useState<Asset | null>(null);
+  const [customPerson, setCustomPerson]   = useState<string | null>(null); // base64
+  const [customCloth, setCustomCloth]     = useState<string | null>(null); // base64
+
+  const [generatedCloth, setGeneratedCloth] = useState<string | null>(null);
+  const [prompt, setPrompt]               = useState("");
+  const [loading, setLoading]             = useState(false);
+  const [generatingCloth, setGeneratingCloth] = useState(false);
+  const [approved, setApproved]           = useState(false);
+  const [result, setResult]               = useState<string | null>(null);
+  const [step, setStep]                   = useState<1 | 2 | 3>(1);
 
   const personRef = useRef<HTMLInputElement>(null);
-  const clothRef = useRef<HTMLInputElement>(null);
+  const clothRef  = useRef<HTMLInputElement>(null);
 
-  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>, type: "person" | "cloth") => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (type === "person") setPersonImage(reader.result as string);
-      else setClothingImage(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+  // ── Derived image sources ──
+  const personSrc  = customPerson ?? personAsset?.url ?? null;
+  const personLabel = customPerson ? "Custom" : (personAsset?.label ?? "—");
+
+  const activeClothesSrc  = customCloth ?? clothAsset?.url ?? null;
+  const activeClothLabel  = customCloth ? "Custom" : (clothAsset?.label ?? "—");
+
+  // The garment preview shows the pending generated cloth if not yet approved,
+  // otherwise shows the active cloth.
+  const garmentPreviewSrc = (generatedCloth && !approved) ? generatedCloth : activeClothesSrc;
+
+  const canTryOn = !!personSrc && !!activeClothesSrc && !loading && !generatingCloth;
+
+  // ── Handlers ──
+  const selectModel = (m: Asset) => {
+    setPersonAsset(m);
+    setCustomPerson(null);
+    setStep(s => s < 2 ? 2 : s);
   };
 
-  const generatePreview = () => {
-    if (!personImage && !clothingImage) return;
-    setResult(personImage || clothingImage || null);
+  const selectCloth = (c: Asset) => {
+    setClothAsset(c);
+    setCustomCloth(null);
+    setGeneratedCloth(null);
+    setApproved(false);
+    setStep(s => s < 3 ? 3 : s);
+  };
+
+  const handleUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    type: "person" | "cloth"
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const resized = await resizeImage(file);
+    if (type === "person") {
+      setCustomPerson(resized);
+      setPersonAsset(null);
+      setStep(s => s < 2 ? 2 : s);
+    } else {
+      setCustomCloth(resized);
+      setClothAsset(null);
+      setGeneratedCloth(null);
+      setApproved(false);
+    }
+  };
+
+  // ── Generate clothing via AI ──
+  const generateClothing = async () => {
+    if (!personSrc) return alert("Select a model first.");
+    if (!prompt.trim()) return alert("Write a clothing description.");
+    setGeneratingCloth(true); setGeneratedCloth(null); setApproved(false);
+    try {
+      const personBase64 = personSrc.startsWith("data:")
+        ? personSrc.split(",")[1]
+        : await urlToBase64(personSrc);
+      const res = await fetch(`${API}/generate_cloth`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ person: personBase64, cloth_type: "upper", prompt }),
+      });
+      const data = await res.json();
+      if (data.error) alert(data.error);
+      else setGeneratedCloth(data.url + "?t=" + Date.now());
+    } catch { alert("Failed to generate clothing."); }
+    setGeneratingCloth(false);
+  };
+
+  const approveCloth = () => {
+    if (!generatedCloth) return;
+    // Treat the generated cloth as a custom cloth (base64 or URL)
+    setCustomCloth(null);
+    setClothAsset(null);
+    setApproved(true);
+  };
+
+  // When approved we use generatedCloth as the cloth source in the API call
+  const clothSrcForApi = (approved && generatedCloth) ? generatedCloth : activeClothesSrc;
+
+  // ── Try-on ──
+  const generatePreview = async () => {
+    if (!personSrc || !clothSrcForApi) return alert("Select model & clothing first.");
+    setLoading(true); setResult(null);
+    try {
+      const personBase64 = personSrc.startsWith("data:")
+        ? personSrc.split(",")[1]
+        : await urlToBase64(personSrc);
+      const clothBase64 = clothSrcForApi.startsWith("data:")
+        ? clothSrcForApi.split(",")[1]
+        : await urlToBase64(clothSrcForApi);
+      const res = await fetch(`${API}/tryon`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ person: personBase64, cloth: clothBase64, cloth_type: "upper", bg_option: "original" }),
+      });
+      const data = await res.json();
+      if (data.error) alert(data.error);
+      else setResult(data.url + "?t=" + Date.now());
+    } catch { alert("Failed to connect to backend."); }
+    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-background px-4 py-6 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-semibold text-center mb-6">Virtual Try-On</h1>
+    <div style={{ fontFamily: "'DM Sans', sans-serif", background: "#26262a", minHeight: "100vh", color: "#f0ede8" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,300&family=DM+Serif+Display:ital@0;1&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        .card-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        @media(max-width:640px){ .card-grid { grid-template-columns: repeat(2,1fr); } }
+        .thumb {
+          border-radius: 12px; overflow: hidden; cursor: pointer;
+          border: 2px solid transparent; transition: border-color .2s, transform .2s, box-shadow .2s;
+          position: relative; aspect-ratio: 3/4; background: #1a1a1f;
+        }
+        .thumb:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+        .thumb.selected { border-color: #bc9968; box-shadow: 0 0 0 4px rgba(200,169,126,.15); }
+        .thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+        .thumb .badge {
+          position:absolute; bottom:8px; left:8px; right:8px;
+          background:rgba(13,13,15,.75); backdrop-filter:blur(6px);
+          border-radius:6px; padding:4px 8px;
+          font-size:11px; font-weight:500; letter-spacing:.04em; text-align:center;
+          color:#f0ede8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        }
+        .thumb .check {
+          position:absolute; top:8px; right:8px; width:22px; height:22px; border-radius:50%;
+          background:#c8a97e; display:flex; align-items:center; justify-content:center;
+          font-size:11px; opacity:0; transition:opacity .2s;
+        }
+        .thumb.selected .check { opacity:1; }
+        .upload-tile {
+          border-radius:12px; border:2px dashed #2e2e35; cursor:pointer;
+          display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+          aspect-ratio:3/4; background:#13131a; transition: border-color .2s, background .2s;
+          font-size:12px; color:#6b6b7a; font-weight:500;
+        }
+        .upload-tile:hover { border-color:#c8a97e; background:#18181f; color:#c8a97e; }
+        .section-title { font-family:'DM Serif Display', serif; font-size:18px; letter-spacing:-.01em; color:#f0ede8; margin-bottom:14px; }
+        .section-tag {
+          display:inline-flex; align-items:center; gap:6px;
+          background:#1e1e26; border:1px solid #2a2a35; border-radius:20px;
+          padding:4px 12px; font-size:11px; font-weight:500; letter-spacing:.08em;
+          color:#8b8b9e; text-transform:uppercase; margin-bottom:10px;
+        }
+        .dot { width:6px;height:6px;border-radius:50%;background:#c8a97e; }
+        .result-panel {
+          border-radius:16px; border:1px solid #1e1e26; background:#101015; overflow:hidden;
+          display:flex; align-items:center; justify-content:center; min-height:420px; position:relative;
+        }
+        .result-img { max-height:420px; object-fit:contain; border-radius:12px; }
+        .btn-primary {
+          background: linear-gradient(135deg, #c8a97e, #a8865a); color: #0d0d0f;
+          font-weight:700; font-size:14px; border:none; border-radius:12px;
+          padding:14px 28px; cursor:pointer; width:100%; letter-spacing:.02em;
+          transition: opacity .2s, transform .15s; font-family:'DM Sans',sans-serif;
+        }
+        .btn-primary:hover:not(:disabled) { opacity:.9; transform:translateY(-1px); }
+        .btn-primary:disabled { opacity:.35; cursor:not-allowed; }
+        .btn-ghost {
+          background: transparent; color:#c8a97e; font-weight:600; font-size:13px;
+          border:1.5px solid #c8a97e30; border-radius:10px; padding:10px 20px;
+          cursor:pointer; transition:background .2s, border-color .2s;
+          font-family:'DM Sans',sans-serif; flex:1;
+        }
+        .btn-ghost:hover { background:#c8a97e15; border-color:#c8a97e80; }
+        .btn-ghost:disabled { opacity:.35; cursor:not-allowed; }
+        .btn-outline {
+          background: transparent; color:#f0ede8; font-weight:600; font-size:13px;
+          border:1.5px solid #2a2a38; border-radius:10px; padding:10px 20px;
+          cursor:pointer; transition:background .2s; font-family:'DM Sans',sans-serif; flex:1;
+        }
+        .btn-outline:hover { background:#1e1e28; }
+        textarea {
+          width:100%; background:#13131a; border:1.5px solid #2a2a35; border-radius:10px;
+          padding:12px 14px; color:#f0ede8; font-size:13px; font-family:'DM Sans',sans-serif;
+          resize:none; outline:none; transition:border-color .2s; line-height:1.5;
+        }
+        textarea:focus { border-color:#c8a97e80; }
+        textarea::placeholder { color:#444452; }
+        .preview-card {
+          background:#13131a; border:1px solid #1e1e26; border-radius:14px;
+          overflow:hidden; display:flex; flex-direction:column; align-items:center;
+        }
+        .preview-img-wrap { width:100%; aspect-ratio:3/4; overflow:hidden; position:relative; background:#0d0d0f; }
+        .preview-img-wrap img { width:100%;height:100%;object-fit:cover; }
+        .preview-label { padding:10px 14px; font-size:12px; color:#6b6b7a; font-weight:500; width:100%; text-align:center; letter-spacing:.03em; }
+        .spinner {
+          width:36px;height:36px;border-radius:50%;
+          border:3px solid #2a2a38; border-top-color:#c8a97e;
+          animation:spin 1s linear infinite;
+        }
+        @keyframes spin{ to{ transform:rotate(360deg); } }
+        .divider { height:1px; background:linear-gradient(90deg,transparent,#2a2a38,transparent); margin:6px 0; }
+        .empty-state { width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#2e2e38;font-size:13px; }
+      `}</style>
 
-      {/* TOP SELECTION BARS */}
-      <div className="mb-6">
-        <h2 className="text-sm text-muted-foreground mb-2">Choose Model</h2>
-        <div className="flex gap-3 overflow-x-auto mb-4">
-          {SAMPLE_MODELS.map((m) => (
-            <img
-              key={m.id}
-              src={m.image}
-              onClick={() => setPersonImage(m.image)}
-              className={`w-20 h-28 rounded-lg object-cover cursor-pointer border-2 ${
-                personImage === m.image ? "border-primary" : "border-transparent"
-              }`}
-            />
+      {/* Header */}
+      <header style={{ borderBottom: "1px solid #1a1a22", padding: "18px 32px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div>
+          <div style={{ fontFamily: "'DM Serif Display',serif", fontSize: "22px", letterSpacing: "-.02em" }}>VIRTUAL TRY-ON</div>
+
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          {[1, 2, 3].map((n) => (
+            <div key={n} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: "50%",
+                background: step >= n ? "linear-gradient(135deg,#c8a97e,#a8865a)" : "#1e1e26",
+                border: step >= n ? "none" : "1px solid #2a2a35",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 11, fontWeight: 700, color: step >= n ? "#0d0d0f" : "#4a4a5a",
+              }}>{n}</div>
+              {n < 3 && <div style={{ width: 20, height: 1, background: step > n ? "#c8a97e40" : "#2a2a35" }} />}
+            </div>
           ))}
-          <button
-            onClick={() => personRef.current?.click()}
-            className="w-20 h-28 border-dashed border flex items-center justify-center rounded-lg"
-          >
-            <Upload size={24} />
-          </button>
         </div>
+      </header>
 
-        <h2 className="text-sm text-muted-foreground mb-2">Choose Outfit</h2>
-        <div className="flex gap-3 overflow-x-auto">
-          {SAMPLE_CLOTHES.map((c) => (
-            <img
-              key={c.id}
-              src={c.image}
-              onClick={() => setClothingImage(c.image)}
-              className={`w-20 h-28 rounded-lg object-cover cursor-pointer border-2 ${
-                clothingImage === c.image ? "border-primary" : "border-transparent"
-              }`}
-            />
-          ))}
-          <button
-            onClick={() => clothRef.current?.click()}
-            className="w-20 h-28 border-dashed border flex items-center justify-center rounded-lg"
-          >
-            <Upload size={24} />
-          </button>
-        </div>
-      </div>
+      {/* Main */}
+      <main style={{ maxWidth: 1100, margin: "0 auto", padding: "25px 20px 40px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
 
-      {/* MINI PREVIEW BAR (Always Visible) */}
-      <div className="flex items-center justify-center gap-4 mb-6">
-        {/* Model */}
-        <div className="w-24 h-32 rounded-lg border overflow-hidden flex items-center justify-center bg-background/50">
-          {personImage ? (
-            <img src={personImage} className="w-full h-full object-cover" />
-          ) : (
-            <User size={24} className="text-muted-foreground" />
-          )}
-        </div>
-        <span className="text-2xl">+</span>
-        {/* Clothing */}
-        <div className="w-24 h-32 rounded-lg border overflow-hidden flex items-center justify-center bg-background/50">
-          {clothingImage ? (
-            <img src={clothingImage} className="w-full h-full object-cover" />
-          ) : (
-            <Shirt size={24} className="text-muted-foreground" />
-          )}
-        </div>
-      </div>
+          {/* LEFT COLUMN */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
 
-      {/* GENERATE BUTTON */}
-      <Button onClick={generatePreview} className="w-full mb-6">
-        Generate Look
-      </Button>
+            {/* Step 1 – Choose Model */}
+            <section>
+              <div className="section-tag"><span className="dot" />Step 01</div>
+              <div className="section-title">Choose Your Model</div>
+              <div className="card-grid" style={{ marginBottom: 10 }}>
+                {DATASET.models.map((m) => (
+                  <div
+                    key={m.id}
+                    className={`thumb${personAsset?.id === m.id ? " selected" : ""}`}
+                    onClick={() => selectModel(m)}
+                  >
+                    <img src={m.url} alt={m.label} />
+                    <div className="badge">{m.label}</div>
+                    <div className="check">✓</div>
+                  </div>
+                ))}
+              </div>
+              <div
+                className="upload-tile"
+                onClick={() => personRef.current?.click()}
+                style={{ aspectRatio: "auto", height: 50, flexDirection: "row", gap: 8 }}
+              >
+                <span style={{ fontSize: 18 }}>↑</span>
+                <span>Upload your own photo</span>
+                {customPerson && (
+                  <span style={{ color: "#c8a97e", marginLeft: "auto", fontSize: 11 }}>✓ Uploaded</span>
+                )}
+              </div>
+            </section>
 
-      {/* BIG PREVIEW AREA */}
-      <div className="border rounded-xl h-96 flex items-center justify-center bg-muted/20">
-        {result ? (
-          <div className="flex items-center justify-center gap-4">
-            {personImage && <img src={personImage} className="h-full object-contain rounded-lg" />}
-            {clothingImage && <img src={clothingImage} className="h-full object-contain rounded-lg" />}
+            <div className="divider" />
+
+            {/* Step 2 – Choose Clothing */}
+            <section>
+              <div className="section-tag"><span className="dot" />Step 02</div>
+              <div className="section-title">Pick a Garment</div>
+              <div className="card-grid" style={{ marginBottom: 10 }}>
+                {DATASET.clothes.map((c) => (
+                  <div
+                    key={c.id}
+                    className={`thumb${clothAsset?.id === c.id ? " selected" : ""}`}
+                    onClick={() => selectCloth(c)}
+                  >
+                    <img src={c.url} alt={c.label} />
+                    <div className="badge">{c.label}</div>
+                    <div className="check">✓</div>
+                  </div>
+                ))}
+              </div>
+
+              <div
+                className="upload-tile"
+                onClick={() => clothRef.current?.click()}
+                style={{ aspectRatio: "auto", height: 50, flexDirection: "row", gap: 8 }}
+              >
+                <span style={{ fontSize: 18 }}>↑</span>
+                <span>Upload your own garment</span>
+                {customCloth && (
+                  <span style={{ color: "#baa792", marginLeft: "auto", fontSize: 11 }}>✓ Uploaded</span>
+                )}
+              </div>
+
+              {/* AI Generate */}
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 11, color: "#5a5a6a", fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", marginBottom: 8 }}>— or generate with AI —</div>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. 'A slim-fit navy linen blazer with gold buttons…'"
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                />
+                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                  <button className="btn-ghost" onClick={generateClothing} disabled={generatingCloth || !personSrc}>
+                    {generatingCloth ? "Generating…" : "✦ Generate"}
+                  </button>
+                  {generatedCloth && !approved && (
+                    <>
+                      <button className="btn-ghost" onClick={approveCloth}>✓ Use This</button>
+                      <button className="btn-outline" onClick={generateClothing}>↺ Redo</button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </section>
           </div>
-        ) : (
-          <div className="text-center text-muted-foreground">
-            <Sparkles className="mx-auto mb-2" size={36} />
-            Your styled look will appear here
-          </div>
-        )}
-      </div>
 
-      {/* HIDDEN INPUTS */}
-      <input ref={personRef} type="file" hidden onChange={(e) => handleUpload(e, "person")} />
-      <input ref={clothRef} type="file" hidden onChange={(e) => handleUpload(e, "cloth")} />
+          {/* RIGHT COLUMN */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+
+            {/* Preview cards */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div className="preview-card">
+                <div className="preview-img-wrap">
+                  {personSrc
+                    ? <img src={personSrc} alt="model" />
+                    : <div className="empty-state">No model</div>}
+                </div>
+                <div className="preview-label">MODEL · {personLabel.toUpperCase()}</div>
+              </div>
+
+              <div className="preview-card">
+                <div className="preview-img-wrap">
+                  {garmentPreviewSrc
+                    ? <img src={garmentPreviewSrc} alt="garment" />
+                    : <div className="empty-state">No garment</div>}
+                </div>
+                <div className="preview-label">
+                  GARMENT · {(approved && generatedCloth) ? "GENERATED" : activeClothLabel.toUpperCase()}
+                </div>
+              </div>
+            </div>
+
+            {/* Try-On button */}
+            <button className="btn-primary" onClick={generatePreview} disabled={!canTryOn}>
+              {loading ? "Processing… (1–2 min)" : "✦ Generate Try-On"}
+            </button>
+
+            {/* Result */}
+            <div className="result-panel">
+              {loading ? (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+                  <div className="spinner" />
+                  <div style={{ fontSize: 12, color: "#5a5a6a", fontWeight: 500 }}>Running on GPU…</div>
+                </div>
+              ) : result ? (
+                <img src={result} alt="try-on result" className="result-img" />
+              ) : (
+                <div style={{ textAlign: "center", color: "#2e2e38" }}>
+                  <div style={{ fontSize: 48, marginBottom: 12, opacity: .3 }}>◈</div>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>Result appears here</div>
+                  <div style={{ fontSize: 11, marginTop: 4, color: "#3a3a45" }}>Select model + garment, then try on</div>
+                </div>
+              )}
+              {result && (
+                <a
+                  href={result}
+                  download="tryon-result.jpg"
+                  style={{
+                    position: "absolute", bottom: 12, right: 12,
+                    background: "rgba(12, 12, 12, 0.8)", backdropFilter: "blur(8px)",
+                    border: "1px solid #2a2a38", borderRadius: 8,
+                    padding: "6px 12px", fontSize: 11, color: "#c8a97e",
+                    fontWeight: 600, textDecoration: "none", letterSpacing: ".04em",
+                  }}
+                >
+                  ↓ Save
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Hidden file inputs */}
+      <input ref={personRef} type="file" hidden accept="image/*" onChange={(e) => handleUpload(e, "person")} />
+      <input ref={clothRef}  type="file" hidden accept="image/*" onChange={(e) => handleUpload(e, "cloth")}  />
     </div>
   );
 }
