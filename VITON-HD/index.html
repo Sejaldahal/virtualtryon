@@ -1,0 +1,1363 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Virtual Try-On Using GAN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Share+Tech+Mono&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --black: #050507;
+        --deep: #0a0a0f;
+        --panel: #0f0f17;
+        --border: #1a1a2e;
+        --cyan: #00e5ff;
+        --gold: #c9a84c;
+        --gold2: #f0d080;
+        --white: #e8e8f0;
+        --muted: #4a4a6a;
+        --danger: #ff4466;
+        --glow-c: rgba(0, 229, 255, 0.18);
+        --glow-g: rgba(201, 168, 76, 0.15);
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html {
+        font-size: 16px;
+        scroll-behavior: smooth;
+      }
+
+      body {
+        background: var(--black);
+        color: var(--white);
+        font-family: "Share Tech Mono", monospace;
+        min-height: 100vh;
+        overflow-x: hidden;
+        cursor: none;
+      }
+
+      /* ── CUSTOM CURSOR ── */
+      #cursor {
+        position: fixed;
+        z-index: 9999;
+        width: 10px;
+        height: 10px;
+        background: var(--cyan);
+        border-radius: 50%;
+        pointer-events: none;
+        transform: translate(-50%, -50%);
+        transition:
+          transform 0.08s,
+          width 0.2s,
+          height 0.2s,
+          opacity 0.2s;
+        mix-blend-mode: screen;
+      }
+      #cursor-ring {
+        position: fixed;
+        z-index: 9998;
+        width: 36px;
+        height: 36px;
+        border: 1px solid rgba(0, 229, 255, 0.5);
+        border-radius: 50%;
+        pointer-events: none;
+        transform: translate(-50%, -50%);
+        transition:
+          transform 0.18s ease-out,
+          width 0.3s,
+          height 0.3s;
+      }
+      body:has(button:hover) #cursor {
+        width: 20px;
+        height: 20px;
+        background: var(--gold);
+      }
+      body:has(.thumb:hover) #cursor {
+        width: 6px;
+        height: 6px;
+      }
+
+      /* ── CANVAS BACKGROUND ── */
+      #bg-canvas {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+      }
+
+      /* ── SCANLINE OVERLAY ── */
+      body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+        background: repeating-linear-gradient(
+          0deg,
+          transparent,
+          transparent 2px,
+          rgba(0, 0, 0, 0.08) 2px,
+          rgba(0, 0, 0, 0.08) 4px
+        );
+      }
+
+      /* ── HEADER ── */
+      header {
+        position: relative;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1.4rem 3rem;
+        border-bottom: 1px solid var(--border);
+        background: rgba(5, 5, 7, 0.8);
+        backdrop-filter: blur(20px);
+      }
+      .logo-block {
+        display: flex;
+        flex-direction: column;
+        gap: 0.1rem;
+      }
+      .logo-sub {
+        font-size: 0.55rem;
+        letter-spacing: 0.4em;
+        text-transform: uppercase;
+        color: var(--cyan);
+        opacity: 0.7;
+      }
+      .logo-main {
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 1.6rem;
+        letter-spacing: 0.1em;
+        color: var(--white);
+        line-height: 1;
+      }
+      .logo-main span {
+        color: var(--gold);
+      }
+
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+      }
+      .status-dot {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.58rem;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--cyan);
+        box-shadow: 0 0 8px var(--cyan);
+        animation: pulse-dot 2s ease-in-out infinite;
+      }
+      @keyframes pulse-dot {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.3;
+        }
+      }
+
+      .ver-tag {
+        font-size: 0.52rem;
+        letter-spacing: 0.2em;
+        color: var(--muted);
+        border: 1px solid var(--border);
+        padding: 0.2rem 0.6rem;
+      }
+
+      /* ── HERO ── */
+      .hero {
+        position: relative;
+        z-index: 10;
+        text-align: center;
+        padding: 5rem 2rem 3rem;
+        overflow: hidden;
+      }
+      .hero-eyebrow {
+        font-size: 0.6rem;
+        letter-spacing: 0.5em;
+        text-transform: uppercase;
+        color: var(--cyan);
+        margin-bottom: 1.5rem;
+        animation: fadeUp 0.8s ease both;
+      }
+      .hero-title {
+        font-family: "Bebas Neue", sans-serif;
+        font-size: clamp(3.5rem, 10vw, 9rem);
+        letter-spacing: 0.04em;
+        line-height: 0.95;
+        animation: fadeUp 0.8s 0.1s ease both;
+      }
+      .hero-title .line1 {
+        color: var(--white);
+        display: block;
+      }
+      .hero-title .line2 {
+        color: transparent;
+        -webkit-text-stroke: 1px var(--gold);
+        display: block;
+      }
+      .hero-title .line3 {
+        color: var(--cyan);
+        display: block;
+      }
+
+      .hero-desc {
+        margin-top: 1.5rem;
+        font-size: 0.68rem;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+        max-width: 50ch;
+        margin-inline: auto;
+        animation: fadeUp 0.8s 0.2s ease both;
+      }
+
+      .hero-rule {
+        width: 60px;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--gold),
+          transparent
+        );
+        margin: 2rem auto 0;
+        animation: fadeUp 0.8s 0.3s ease both;
+      }
+
+      @keyframes fadeUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* ── WORKSPACE ── */
+      .workspace {
+        position: relative;
+        z-index: 10;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 1.5px;
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 0 2rem 6rem;
+      }
+
+      /* ── PANEL ── */
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        position: relative;
+        animation: fadeUp 0.6s ease both;
+      }
+      .panel:nth-child(1) {
+        animation-delay: 0.1s;
+      }
+      .panel:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      .panel:nth-child(3) {
+        animation-delay: 0.3s;
+      }
+
+      /* glowing top edge */
+      .panel::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--cyan),
+          transparent
+        );
+        opacity: 0;
+        transition: opacity 0.4s;
+      }
+      .panel:nth-child(2)::before {
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--gold),
+          transparent
+        );
+      }
+      .panel:nth-child(3)::before {
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--cyan),
+          transparent
+        );
+      }
+      .panel:hover::before {
+        opacity: 1;
+      }
+
+      .panel-head {
+        padding: 1rem 1.25rem 0.9rem;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        flex-shrink: 0;
+        background: rgba(0, 0, 0, 0.3);
+      }
+      .step-badge {
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 2.2rem;
+        line-height: 1;
+        color: var(--border);
+        transition: color 0.3s;
+        flex-shrink: 0;
+      }
+      .panel:hover .step-badge {
+        color: var(--muted);
+      }
+      .panel-info {
+        flex: 1;
+      }
+      .panel-title {
+        font-family: "Libre Baskerville", serif;
+        font-size: 0.95rem;
+        font-weight: 400;
+        color: var(--white);
+        letter-spacing: 0.05em;
+      }
+      .panel-sub {
+        font-size: 0.55rem;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-top: 0.2rem;
+      }
+
+      .btn-shuffle {
+        background: none;
+        border: 1px solid var(--border);
+        color: var(--muted);
+        cursor: none;
+        padding: 0.3rem 0.6rem;
+        font-family: "Share Tech Mono", monospace;
+        font-size: 0.55rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        transition: all 0.2s;
+        flex-shrink: 0;
+        align-self: center;
+      }
+      .btn-shuffle:hover {
+        border-color: var(--cyan);
+        color: var(--cyan);
+        box-shadow: 0 0 12px var(--glow-c);
+      }
+      .btn-shuffle.spin {
+        animation: rotateSpin 0.5s linear;
+      }
+      @keyframes rotateSpin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* search */
+      .search-wrap {
+        padding: 0.6rem 0.9rem;
+        border-bottom: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.2);
+        flex-shrink: 0;
+      }
+      .search-wrap input {
+        width: 100%;
+        background: transparent;
+        border: none;
+        border-bottom: 1px solid var(--border);
+        padding: 0.35rem 0.1rem;
+        font-family: "Share Tech Mono", monospace;
+        font-size: 0.6rem;
+        letter-spacing: 0.08em;
+        color: var(--white);
+        outline: none;
+        transition: border-color 0.2s;
+      }
+      .search-wrap input:focus {
+        border-color: var(--cyan);
+      }
+      .search-wrap input::placeholder {
+        color: var(--muted);
+      }
+
+      /* image grid */
+      .img-grid {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0.75rem;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.4rem;
+        max-height: 440px;
+        scrollbar-width: thin;
+        scrollbar-color: var(--border) transparent;
+      }
+      .img-grid::-webkit-scrollbar {
+        width: 3px;
+      }
+      .img-grid::-webkit-scrollbar-thumb {
+        background: var(--border);
+      }
+
+      .thumb {
+        position: relative;
+        aspect-ratio: 3/4;
+        cursor: none;
+        overflow: hidden;
+        border: 1px solid transparent;
+        transition:
+          border-color 0.2s,
+          transform 0.2s;
+      }
+      .thumb::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          to bottom,
+          transparent 50%,
+          rgba(0, 229, 255, 0.15)
+        );
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+      .thumb:hover {
+        transform: scale(1.04);
+        border-color: var(--muted);
+      }
+      .thumb:hover::after {
+        opacity: 1;
+      }
+      .thumb.selected {
+        border-color: var(--cyan);
+        box-shadow:
+          0 0 16px var(--glow-c),
+          inset 0 0 16px rgba(0, 229, 255, 0.05);
+      }
+      .thumb.selected::after {
+        opacity: 1;
+        background: linear-gradient(
+          to bottom,
+          transparent 50%,
+          rgba(0, 229, 255, 0.25)
+        );
+      }
+      .thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        filter: brightness(0.85);
+        transition: filter 0.2s;
+      }
+      .thumb:hover img,
+      .thumb.selected img {
+        filter: brightness(1);
+      }
+
+      .thumb-check {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        z-index: 2;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: var(--cyan);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.55rem;
+        color: var(--black);
+        box-shadow: 0 0 10px var(--cyan);
+      }
+      .thumb.selected .thumb-check {
+        display: flex;
+      }
+
+      .thumb-name {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 2;
+        background: rgba(0, 0, 0, 0.75);
+        color: var(--cyan);
+        font-size: 0.42rem;
+        letter-spacing: 0.06em;
+        padding: 0.18rem 0.3rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+      .thumb:hover .thumb-name {
+        opacity: 1;
+      }
+
+      .empty-msg {
+        grid-column: 1/-1;
+        text-align: center;
+        font-size: 0.6rem;
+        letter-spacing: 0.15em;
+        color: var(--muted);
+        padding: 3rem 0;
+      }
+
+      /* selected bar */
+      .sel-bar {
+        padding: 0.6rem 1rem;
+        border-top: 1px solid var(--border);
+        font-size: 0.55rem;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+        min-height: 2.2rem;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        background: rgba(0, 0, 0, 0.3);
+        flex-shrink: 0;
+      }
+      .sel-bar .sel-name {
+        color: var(--cyan);
+        font-size: 0.58rem;
+      }
+
+      /* ── OUTPUT PANEL ── */
+      .output-zone {
+        flex: 1;
+        min-height: 380px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+        background: radial-gradient(
+          ellipse at center,
+          rgba(0, 229, 255, 0.03) 0%,
+          transparent 70%
+        );
+      }
+
+      .output-idle {
+        text-align: center;
+        pointer-events: none;
+      }
+      .output-idle .big-num {
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 8rem;
+        line-height: 1;
+        color: var(--border);
+        text-shadow: 0 0 60px rgba(0, 229, 255, 0.1);
+      }
+      .output-idle .idle-label {
+        font-size: 0.55rem;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-top: 0.5rem;
+      }
+
+      .result-img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: none;
+      }
+      .result-img.shown {
+        display: block;
+      }
+
+      /* loading overlay */
+      .load-overlay {
+        position: absolute;
+        inset: 0;
+        z-index: 20;
+        background: rgba(5, 5, 7, 0.92);
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1.5rem;
+      }
+      .load-overlay.shown {
+        display: flex;
+      }
+
+      .gan-loader {
+        position: relative;
+        width: 80px;
+        height: 80px;
+      }
+      .gan-ring {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 1px solid transparent;
+      }
+      .gan-ring:nth-child(1) {
+        border-top-color: var(--cyan);
+        animation: spin1 1.2s linear infinite;
+      }
+      .gan-ring:nth-child(2) {
+        inset: 8px;
+        border-right-color: var(--gold);
+        animation: spin1 0.8s linear infinite reverse;
+      }
+      .gan-ring:nth-child(3) {
+        inset: 18px;
+        border-bottom-color: var(--cyan);
+        animation: spin1 1.5s linear infinite;
+      }
+      .gan-center {
+        position: absolute;
+        inset: 28px;
+        background: var(--cyan);
+        border-radius: 50%;
+        box-shadow: 0 0 20px var(--cyan);
+        animation: pulseCen 1s ease-in-out infinite;
+      }
+      @keyframes spin1 {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @keyframes pulseCen {
+        0%,
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.3;
+          transform: scale(0.6);
+        }
+      }
+
+      .load-txt {
+        font-size: 0.6rem;
+        letter-spacing: 0.25em;
+        text-transform: uppercase;
+        color: var(--cyan);
+      }
+      .load-stage {
+        font-size: 0.52rem;
+        letter-spacing: 0.2em;
+        color: var(--muted);
+      }
+
+      /* progress bar */
+      .load-bar-wrap {
+        width: 160px;
+        height: 1px;
+        background: var(--border);
+      }
+      .load-bar {
+        height: 100%;
+        background: linear-gradient(90deg, var(--cyan), var(--gold));
+        width: 0%;
+        animation: loadProgress 90s linear forwards;
+        box-shadow: 0 0 8px var(--cyan);
+      }
+      @keyframes loadProgress {
+        to {
+          width: 92%;
+        }
+      }
+
+      /* output footer */
+      .output-footer {
+        padding: 0.85rem 1rem;
+        border-top: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+        flex-shrink: 0;
+        background: rgba(0, 0, 0, 0.4);
+      }
+
+      .btn-generate {
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 1.1rem;
+        letter-spacing: 0.2em;
+        background: transparent;
+        color: var(--cyan);
+        border: 1px solid var(--cyan);
+        cursor: none;
+        padding: 0.75rem 1rem;
+        width: 100%;
+        position: relative;
+        overflow: hidden;
+        transition:
+          color 0.3s,
+          box-shadow 0.3s;
+      }
+      .btn-generate::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: var(--cyan);
+        transform: translateY(101%);
+        transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .btn-generate:hover {
+        color: var(--black);
+        box-shadow:
+          0 0 30px var(--glow-c),
+          0 0 60px rgba(0, 229, 255, 0.1);
+      }
+      .btn-generate:hover::before {
+        transform: translateY(0);
+      }
+      .btn-generate span {
+        position: relative;
+        z-index: 1;
+      }
+      .btn-generate:disabled {
+        opacity: 0.2;
+        cursor: not-allowed;
+      }
+      .btn-generate:disabled::before {
+        display: none;
+      }
+      .btn-generate:disabled {
+        color: var(--muted);
+        border-color: var(--border);
+      }
+
+      .btn-download {
+        font-family: "Share Tech Mono", monospace;
+        font-size: 0.58rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        background: transparent;
+        color: var(--gold);
+        border: 1px solid var(--gold);
+        cursor: none;
+        padding: 0.5rem 1rem;
+        width: 100%;
+        transition: all 0.2s;
+        display: none;
+      }
+      .btn-download.shown {
+        display: block;
+      }
+      .btn-download:hover {
+        background: var(--gold);
+        color: var(--black);
+        box-shadow: 0 0 20px var(--glow-g);
+      }
+
+      .status-msg {
+        font-size: 0.55rem;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+        text-align: center;
+        min-height: 1.2em;
+        transition: color 0.3s;
+      }
+      .status-msg.ok {
+        color: #44cc88;
+      }
+      .status-msg.err {
+        color: var(--danger);
+      }
+      .status-msg.run {
+        color: var(--cyan);
+      }
+
+      /* ── FOOTER ── */
+      footer {
+        position: relative;
+        z-index: 10;
+        border-top: 1px solid var(--border);
+        padding: 1.5rem 3rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: rgba(5, 5, 7, 0.9);
+      }
+      .footer-left {
+        font-size: 0.52rem;
+        letter-spacing: 0.2em;
+        color: var(--muted);
+        text-transform: uppercase;
+      }
+      .footer-right {
+        display: flex;
+        gap: 2rem;
+      }
+      .foot-stat {
+        text-align: right;
+      }
+      .foot-stat .val {
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 1.1rem;
+        color: var(--cyan);
+        display: block;
+      }
+      .foot-stat .lbl {
+        font-size: 0.5rem;
+        letter-spacing: 0.15em;
+        color: var(--muted);
+        text-transform: uppercase;
+      }
+
+      /* ── DIVIDERS between panels ── */
+      .workspace {
+        gap: 0;
+      }
+      .panel {
+        border-right: none;
+      }
+      .panel:last-child {
+        border-right: 1px solid var(--border);
+      }
+
+      @media (max-width: 960px) {
+        .workspace {
+          grid-template-columns: 1fr;
+          padding: 0 1rem 4rem;
+        }
+        .panel {
+          border-right: 1px solid var(--border);
+          margin-bottom: 1px;
+        }
+        .img-grid {
+          max-height: 280px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- CURSOR -->
+    <div id="cursor"></div>
+    <div id="cursor-ring"></div>
+
+    <!-- ANIMATED BG -->
+    <canvas id="bg-canvas"></canvas>
+
+    <!-- HEADER -->
+    <header>
+      <div class="logo-block">
+        <span class="logo-sub">Generative Adversarial Network</span>
+        <span class="logo-main">AI Virtual Try-On <span>Using GAN</span></span>
+      </div>
+      <div class="header-right">
+        <div class="status-dot">
+          <div class="dot"></div>
+          Model Ready
+        </div>
+        <div class="ver-tag">VITON-HD · v2.0</div>
+      </div>
+    </header>
+
+    <!-- HERO -->
+    <section class="hero">
+      <p class="hero-eyebrow">
+        Powered by ALIAS Generator · Full 1024×768 Resolution
+      </p>
+      <h1 class="hero-title">
+        <span class="line1">Virtual</span>
+        <span class="line2">Fashion</span>
+        <span class="line3">Try-On</span>
+      </h1>
+      <p class="hero-desc">
+        Select a person from your dataset. Select a garment. Let the GAN do the
+        rest.
+      </p>
+      <div class="hero-rule"></div>
+    </section>
+
+    <!-- WORKSPACE -->
+    <div class="workspace">
+      <!-- PERSON PANEL -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="step-badge">01</div>
+          <div class="panel-info">
+            <div class="panel-title">Select Person</div>
+            <div class="panel-sub">dataset / image /</div>
+          </div>
+          <button class="btn-shuffle" id="personShuffle">↻ Shuffle</button>
+        </div>
+        <div class="search-wrap">
+          <input
+            type="text"
+            id="personSearch"
+            placeholder="// search filename..."
+          />
+        </div>
+        <div class="img-grid" id="personGrid">
+          <div class="empty-msg">// LOADING...</div>
+        </div>
+        <div class="sel-bar" id="personBar">
+          <span style="color: var(--muted)">▸</span> No selection
+        </div>
+      </div>
+
+      <!-- CLOTH PANEL -->
+      <div class="panel" style="border-left: 1px solid var(--border)">
+        <div class="panel-head">
+          <div class="step-badge" style="color: var(--border)">02</div>
+          <div class="panel-info">
+            <div class="panel-title">Select Garment</div>
+            <div class="panel-sub">dataset / cloth /</div>
+          </div>
+          <button class="btn-shuffle" id="clothShuffle">↻ Shuffle</button>
+        </div>
+        <div class="search-wrap">
+          <input
+            type="text"
+            id="clothSearch"
+            placeholder="// search filename..."
+          />
+        </div>
+        <div class="img-grid" id="clothGrid">
+          <div class="empty-msg">// LOADING...</div>
+        </div>
+        <div class="sel-bar" id="clothBar">
+          <span style="color: var(--muted)">▸</span> No selection
+        </div>
+      </div>
+
+      <!-- OUTPUT PANEL -->
+      <div
+        class="panel"
+        style="
+          border-left: 1px solid var(--border);
+          border-right: 1px solid var(--border);
+        "
+      >
+        <div class="panel-head">
+          <div
+            class="step-badge"
+            style="-webkit-text-stroke: 1px var(--cyan); color: transparent"
+          >
+            03
+          </div>
+          <div class="panel-info">
+            <div class="panel-title" style="color: var(--cyan)">
+              Result Output
+            </div>
+            <div class="panel-sub">GAN · ALIAS GENERATOR</div>
+          </div>
+        </div>
+
+        <div class="output-zone" id="outputZone">
+          <div class="output-idle" id="outputIdle">
+            <div class="big-num">GAN</div>
+            <div class="idle-label">Awaiting inference</div>
+          </div>
+          <img class="result-img" id="resultImg" />
+          <div class="load-overlay" id="loadOverlay">
+            <div class="gan-loader">
+              <div class="gan-ring"></div>
+              <div class="gan-ring"></div>
+              <div class="gan-ring"></div>
+              <div class="gan-center"></div>
+            </div>
+            <div class="load-txt">Generating</div>
+            <div class="load-stage" id="loadStage">Initialising model...</div>
+            <div class="load-bar-wrap">
+              <div class="load-bar" id="loadBar"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="output-footer">
+          <button class="btn-generate" id="generateBtn" disabled>
+            <span>Generate Try-On</span>
+          </button>
+          <button class="btn-download" id="downloadBtn">
+            ↓ Download Result
+          </button>
+          <div class="status-msg" id="statusMsg">
+            Select person and garment to begin.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer>
+      <div class="footer-left">
+        AI Virtual Try-On Using GAN · VITON-HD Fine-tuned
+      </div>
+      <div class="footer-right">
+        <div class="foot-stat">
+          <span class="val" id="statPersons">—</span>
+          <span class="lbl">Persons</span>
+        </div>
+        <div class="foot-stat">
+          <span class="val" id="statCloths">—</span>
+          <span class="lbl">Garments</span>
+        </div>
+        <div class="foot-stat">
+          <span class="val">1024</span>
+          <span class="lbl">Resolution</span>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      /* ── CURSOR ── */
+      const cur = document.getElementById("cursor");
+      const ring = document.getElementById("cursor-ring");
+      document.addEventListener("mousemove", (e) => {
+        cur.style.left = e.clientX + "px";
+        cur.style.top = e.clientY + "px";
+        setTimeout(() => {
+          ring.style.left = e.clientX + "px";
+          ring.style.top = e.clientY + "px";
+        }, 80);
+      });
+
+      /* ── CANVAS PARTICLE GRID ── */
+      const canvas = document.getElementById("bg-canvas");
+      const ctx = canvas.getContext("2d");
+      let W,
+        H,
+        pts = [];
+
+      function resize() {
+        W = canvas.width = window.innerWidth;
+        H = canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener("resize", () => {
+        resize();
+        initPts();
+      });
+
+      function initPts() {
+        pts = [];
+        const cols = Math.ceil(W / 90);
+        const rows = Math.ceil(H / 90);
+        for (let c = 0; c <= cols; c++) {
+          for (let r = 0; r <= rows; r++) {
+            pts.push({
+              x: c * 90,
+              y: r * 90,
+              ox: c * 90,
+              oy: r * 90,
+              vx: (Math.random() - 0.5) * 0.3,
+              vy: (Math.random() - 0.5) * 0.3,
+            });
+          }
+        }
+      }
+      initPts();
+
+      function drawBg() {
+        ctx.clearRect(0, 0, W, H);
+        pts.forEach((p) => {
+          p.x += p.vx;
+          p.y += p.vy;
+          if (Math.abs(p.x - p.ox) > 25) p.vx *= -1;
+          if (Math.abs(p.y - p.oy) > 25) p.vy *= -1;
+        });
+        // draw connections
+        for (let i = 0; i < pts.length; i++) {
+          for (let j = i + 1; j < pts.length; j++) {
+            const dx = pts[i].x - pts[j].x;
+            const dy = pts[i].y - pts[j].y;
+            const d = Math.sqrt(dx * dx + dy * dy);
+            if (d < 110) {
+              ctx.beginPath();
+              ctx.moveTo(pts[i].x, pts[i].y);
+              ctx.lineTo(pts[j].x, pts[j].y);
+              ctx.strokeStyle = `rgba(0,229,255,${0.04 * (1 - d / 110)})`;
+              ctx.lineWidth = 0.5;
+              ctx.stroke();
+            }
+          }
+        }
+        // dots
+        pts.forEach((p) => {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 1.2, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(0,229,255,.15)";
+          ctx.fill();
+        });
+        requestAnimationFrame(drawBg);
+      }
+      drawBg();
+
+      /* ── APP STATE ── */
+      let allPersons = [],
+        allCloths = [];
+      let selectedPerson = null,
+        selectedCloth = null;
+      let resultBlob = null;
+
+      const personGrid = document.getElementById("personGrid");
+      const clothGrid = document.getElementById("clothGrid");
+      const personSearch = document.getElementById("personSearch");
+      const clothSearch = document.getElementById("clothSearch");
+      const personBar = document.getElementById("personBar");
+      const clothBar = document.getElementById("clothBar");
+      const generateBtn = document.getElementById("generateBtn");
+      const downloadBtn = document.getElementById("downloadBtn");
+      const statusMsg = document.getElementById("statusMsg");
+      const resultImg = document.getElementById("resultImg");
+      const outputIdle = document.getElementById("outputIdle");
+      const loadOverlay = document.getElementById("loadOverlay");
+      const loadStage = document.getElementById("loadStage");
+      const loadBar = document.getElementById("loadBar");
+
+      /* ── LOAD IMAGES ── */
+      async function loadImages() {
+        try {
+          const res = await fetch("/list-images");
+          const data = await res.json();
+          allPersons = data.persons || [];
+          allCloths = data.cloths || [];
+          renderGrid(personGrid, allPersons, "image", "person");
+          renderGrid(clothGrid, allCloths, "cloth", "cloth");
+          document.getElementById("statPersons").textContent = "12K+";
+          document.getElementById("statCloths").textContent = "12K+";
+          setStatus("// 10 random samples loaded per panel.", "");
+        } catch (e) {
+          personGrid.innerHTML =
+            '<div class="empty-msg">// CONNECTION FAILED</div>';
+          clothGrid.innerHTML =
+            '<div class="empty-msg">// CONNECTION FAILED</div>';
+        }
+      }
+
+      /* ── RENDER GRID ── */
+      function renderGrid(container, files, folder, type) {
+        if (!files.length) {
+          container.innerHTML =
+            '<div class="empty-msg">// NO IMAGES FOUND</div>';
+          return;
+        }
+        container.innerHTML = "";
+        files.forEach((fn) => {
+          const div = document.createElement("div");
+          div.className = "thumb";
+          const isSel =
+            (type === "person" && fn === selectedPerson) ||
+            (type === "cloth" && fn === selectedCloth);
+          if (isSel) div.classList.add("selected");
+          div.innerHTML = `
+        <img src="/preview/${folder}/${encodeURIComponent(fn)}" loading="lazy" />
+        <div class="thumb-check">✓</div>
+        <div class="thumb-name">${fn}</div>
+      `;
+          div.addEventListener("click", () => selectImage(type, fn, container));
+          container.appendChild(div);
+        });
+      }
+
+      /* ── SELECT ── */
+      function selectImage(type, fn, container) {
+        container
+          .querySelectorAll(".thumb.selected")
+          .forEach((el) => el.classList.remove("selected"));
+        const thumbs = [...container.querySelectorAll(".thumb")];
+        const t = thumbs.find(
+          (el) => el.querySelector(".thumb-name").textContent === fn,
+        );
+        if (t) t.classList.add("selected");
+
+        if (type === "person") {
+          selectedPerson = fn;
+          personBar.innerHTML = `<span style="color:var(--cyan)">▸</span> <span class="sel-name">${fn}</span>`;
+        } else {
+          selectedCloth = fn;
+          clothBar.innerHTML = `<span style="color:var(--cyan)">▸</span> <span class="sel-name">${fn}</span>`;
+        }
+        updateReady();
+      }
+
+      function updateReady() {
+        const ready = selectedPerson && selectedCloth;
+        generateBtn.disabled = !ready;
+        if (ready)
+          setStatus(`// READY — ${selectedPerson} × ${selectedCloth}`, "ok");
+        else if (!selectedPerson && !selectedCloth)
+          setStatus("Select person and garment to begin.", "");
+        else if (!selectedPerson) setStatus("// Now select a person.", "");
+        else setStatus("// Now select a garment.", "");
+      }
+
+      function setStatus(msg, cls) {
+        statusMsg.textContent = msg;
+        statusMsg.className = `status-msg ${cls}`;
+      }
+
+      /* ── SEARCH ── */
+      personSearch.addEventListener("input", () => {
+        const q = personSearch.value.toLowerCase();
+        renderGrid(
+          personGrid,
+          allPersons.filter((f) => f.toLowerCase().includes(q)),
+          "image",
+          "person",
+        );
+      });
+      clothSearch.addEventListener("input", () => {
+        const q = clothSearch.value.toLowerCase();
+        renderGrid(
+          clothGrid,
+          allCloths.filter((f) => f.toLowerCase().includes(q)),
+          "cloth",
+          "cloth",
+        );
+      });
+
+      /* ── SHUFFLE ── */
+      async function shuffle(type) {
+        const btn = document.getElementById(
+          type === "person" ? "personShuffle" : "clothShuffle",
+        );
+        btn.classList.add("spin");
+        try {
+          const res = await fetch("/list-images");
+          const data = await res.json();
+          if (type === "person") {
+            allPersons = data.persons || [];
+            renderGrid(personGrid, allPersons, "image", "person");
+          } else {
+            allCloths = data.cloths || [];
+            renderGrid(clothGrid, allCloths, "cloth", "cloth");
+          }
+        } catch (e) {}
+        setTimeout(() => btn.classList.remove("spin"), 500);
+      }
+      document
+        .getElementById("personShuffle")
+        .addEventListener("click", () => shuffle("person"));
+      document
+        .getElementById("clothShuffle")
+        .addEventListener("click", () => shuffle("cloth"));
+
+      /* ── GENERATE ── */
+      const stages = [
+        "Running segmentation model...",
+        "Computing pose features...",
+        "Warping garment with GMM...",
+        "Running ALIAS generator...",
+        "Compositing final output...",
+      ];
+      let stageTimer = null;
+
+      generateBtn.addEventListener("click", async () => {
+        if (!selectedPerson || !selectedCloth) return;
+
+        generateBtn.disabled = true;
+        downloadBtn.classList.remove("shown");
+        resultImg.classList.remove("shown");
+        outputIdle.style.display = "none";
+        resultBlob = null;
+
+        // Reset and show loader
+        loadBar.style.animation = "none";
+        loadBar.offsetHeight; // reflow
+        loadBar.style.animation = "";
+        loadOverlay.classList.add("shown");
+
+        let si = 0;
+        loadStage.textContent = stages[0];
+        stageTimer = setInterval(() => {
+          si = (si + 1) % stages.length;
+          loadStage.textContent = stages[si];
+        }, 12000);
+
+        setStatus("// INFERENCE RUNNING...", "run");
+
+        try {
+          const res = await fetch("/tryon", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              person: selectedPerson,
+              cloth: selectedCloth,
+            }),
+          });
+          clearInterval(stageTimer);
+
+          if (!res.ok) {
+            let msg = "Generation failed.";
+            try {
+              const j = await res.json();
+              msg =
+                j.error + (j.details ? " — " + j.details.slice(0, 200) : "");
+            } catch (_) {}
+            throw new Error(msg);
+          }
+
+          resultBlob = await res.blob();
+          const url = URL.createObjectURL(resultBlob);
+          resultImg.src = url;
+          resultImg.classList.add("shown");
+          loadOverlay.classList.remove("shown");
+          downloadBtn.classList.add("shown");
+          setStatus("// OUTPUT READY", "ok");
+        } catch (err) {
+          clearInterval(stageTimer);
+          loadOverlay.classList.remove("shown");
+          outputIdle.style.display = "";
+          setStatus("// ERROR: " + err.message.split("\n")[0], "err");
+          console.error(err);
+        } finally {
+          generateBtn.disabled = !(selectedPerson && selectedCloth);
+        }
+      });
+
+      /* ── DOWNLOAD ── */
+      downloadBtn.addEventListener("click", () => {
+        if (!resultBlob) return;
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(resultBlob);
+        a.download = `tryon_${selectedPerson}_${selectedCloth}.jpg`;
+        a.click();
+      });
+
+      loadImages();
+    </script>
+  </body>
+</html>

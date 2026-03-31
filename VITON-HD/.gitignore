@@ -1,0 +1,8 @@
+checkpoints/*
+!checkpoints/.gitkeep
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+dataset/
+_web_results/
