@@ -1,25 +1,25 @@
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // ── Dataset ──────────────────────────────────────────────────────────────────
-// Replace these URLs with your own hosted/local dataset image paths.
-// All asset data lives here — one place to update.
 const DATASET = {
   models: [
-    { id: "m1", label: "model1",  url: new URL("../components/dataset/models/00674_00.jpg", import.meta.url).href },
+    { id: "m1", label: "model1", url: new URL("../components/dataset/models/00674_00.jpg", import.meta.url).href },
     { id: "m2", label: "model2", url: new URL("../components/dataset/models/00124_00.jpg", import.meta.url).href },
-    { id: "m3", label: "model3",   url: new URL("../components/dataset/models/00153_00.jpg", import.meta.url).href },
-    { id: "m4", label: "model4",    url: new URL("../components/dataset/models/00586_00.jpg", import.meta.url).href },
+    { id: "m3", label: "model3", url: new URL("../components/dataset/models/00153_00.jpg", import.meta.url).href },
+    { id: "m4", label: "model4", url: new URL("../components/dataset/models/00586_00.jpg", import.meta.url).href },
   ],
   clothes: [
-    { id: "c1", label: "1",    url: new URL("../components/dataset/clothes/00000_00.jpg", import.meta.url).href },
+    { id: "c1", label: "1", url: new URL("../components/dataset/clothes/00000_00.jpg", import.meta.url).href },
     { id: "c2", label: "2", url: new URL("../components/dataset/clothes/00024_00.jpg", import.meta.url).href },
-    { id: "c3", label: "3", url: new URL("../components/dataset/clothes/00066_00.jpg", import.meta.url).href },
-    { id: "c4", label: "4",     url: new URL("../components/dataset/clothes/00134_00.jpg", import.meta.url).href },
+    { id: "c3", label: "3", url: new URL("../components/dataset/clothes/traditional.jpg", import.meta.url).href },
+    { id: "c4", label: "4", url: new URL("../components/dataset/clothes/00134_00.jpg", import.meta.url).href },
   ],
 };
 
 // ── Config ───────────────────────────────────────────────────────────────────
-const API = "http://192.168.50.211:5000";
+// ✏️ UPDATE THESE when your servers change
+const TRYON_API = "http://192.168.50.211:5000";                       // College GPU — try-on
+const CLOTH_API = "https://unpositive-nondeaf-sari.ngrok-free.dev";  // Colab ngrok — cloth gen
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const resizeImage = (file: File, maxW = 512, maxH = 512): Promise<string> =>
@@ -42,9 +42,28 @@ async function urlToBase64(url: string): Promise<string> {
   const blob = await res.blob();
   return new Promise((resolve) => {
     const r = new FileReader();
-    r.onloadend = () => resolve((r.result as string).split(",")[1]);
+    r.onloadend = () => {
+      const result = r.result as string;
+      const idx = result.indexOf(",");
+      resolve(result.slice(idx + 1));
+    };
     r.readAsDataURL(blob);
   });
+}
+
+// Safely extract raw base64 from either a data URI or plain base64 string
+function extractBase64(src: string): string {
+  if (src.startsWith("data:")) {
+    const idx = src.indexOf(",");
+    return src.slice(idx + 1);
+  }
+  return src;
+}
+
+// Normalise any image string into a displayable data URI
+function toDataURI(src: string, mime = "image/png"): string {
+  if (src.startsWith("data:")) return src;
+  return `data:${mime};base64,${src}`;
 }
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -52,50 +71,55 @@ type Asset = { id: string; label: string; url: string };
 
 // ── Component ────────────────────────────────────────────────────────────────
 export default function TryOn() {
-  const [personAsset, setPersonAsset]     = useState<Asset | null>(null);
-  const [clothAsset, setClothAsset]       = useState<Asset | null>(null);
-  const [customPerson, setCustomPerson]   = useState<string | null>(null); // base64
-  const [customCloth, setCustomCloth]     = useState<string | null>(null); // base64
+  const [personAsset, setPersonAsset]         = useState<Asset | null>(null);
+  const [clothAsset, setClothAsset]           = useState<Asset | null>(null);
+  const [customPerson, setCustomPerson]       = useState<string | null>(null);
+  const [customCloth, setCustomCloth]         = useState<string | null>(null);
 
-  const [generatedCloth, setGeneratedCloth] = useState<string | null>(null);
-  const [prompt, setPrompt]               = useState("");
-  const [loading, setLoading]             = useState(false);
+  const [generatedCloth, setGeneratedCloth]   = useState<string | null>(null);
+  const [prompt, setPrompt]                   = useState("");
+  const [loading, setLoading]                 = useState(false);
   const [generatingCloth, setGeneratingCloth] = useState(false);
-  const [approved, setApproved]           = useState(false);
-  const [result, setResult]               = useState<string | null>(null);
-  const [step, setStep]                   = useState<1 | 2 | 3>(1);
+  const [approved, setApproved]               = useState(false);
+  const [result, setResult]                   = useState<string | null>(null);
+  const [step, setStep]                       = useState<1 | 2 | 3>(1);
+  const [genError, setGenError]               = useState<string | null>(null);
+  const [downloading, setDownloading]         = useState(false);
+  const [isFullscreen, setIsFullscreen]       = useState(false);
 
   const personRef = useRef<HTMLInputElement>(null);
   const clothRef  = useRef<HTMLInputElement>(null);
 
   // ── Derived image sources ──
-  const personSrc  = customPerson ?? personAsset?.url ?? null;
+  const personSrc   = customPerson ?? personAsset?.url ?? null;
   const personLabel = customPerson ? "Custom" : (personAsset?.label ?? "—");
 
-  const activeClothesSrc  = customCloth ?? clothAsset?.url ?? null;
-  const activeClothLabel  = customCloth ? "Custom" : (clothAsset?.label ?? "—");
+  const activeClothesSrc = customCloth ?? clothAsset?.url ?? null;
+  const activeClothLabel = approved ? "AI Generated" : (customCloth ? "Custom" : (clothAsset?.label ?? "—"));
 
-  // The garment preview shows the pending generated cloth if not yet approved,
-  // otherwise shows the active cloth.
+  // While pending approval show generated preview; after approval show approved cloth
   const garmentPreviewSrc = (generatedCloth && !approved) ? generatedCloth : activeClothesSrc;
 
   const canTryOn = !!personSrc && !!activeClothesSrc && !loading && !generatingCloth;
 
-  // ── Handlers ──
+  // ── Select preset model ──
   const selectModel = (m: Asset) => {
     setPersonAsset(m);
     setCustomPerson(null);
     setStep(s => s < 2 ? 2 : s);
   };
 
+  // ── Select preset cloth ──
   const selectCloth = (c: Asset) => {
     setClothAsset(c);
     setCustomCloth(null);
     setGeneratedCloth(null);
     setApproved(false);
+    setGenError(null);
     setStep(s => s < 3 ? 3 : s);
   };
 
+  // ── Upload handler ──
   const handleUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
     type: "person" | "cloth"
@@ -112,64 +136,183 @@ export default function TryOn() {
       setClothAsset(null);
       setGeneratedCloth(null);
       setApproved(false);
+      setGenError(null);
     }
+    // Reset file input so same file can be re-uploaded
+    e.target.value = "";
   };
 
-  // ── Generate clothing via AI ──
+  // ── Generate clothing via Colab + ngrok ──
   const generateClothing = async () => {
-    if (!personSrc) return alert("Select a model first.");
-    if (!prompt.trim()) return alert("Write a clothing description.");
-    setGeneratingCloth(true); setGeneratedCloth(null); setApproved(false);
+    if (!prompt.trim()) return alert("Write a clothing description first.");
+    setGeneratingCloth(true);
+    setGeneratedCloth(null);
+    setApproved(false);
+    setGenError(null);
+    // Clear any previously approved generated cloth
+    if (approved) {
+      setCustomCloth(null);
+    }
+
     try {
-      const personBase64 = personSrc.startsWith("data:")
-        ? personSrc.split(",")[1]
-        : await urlToBase64(personSrc);
-      const res = await fetch(`${API}/generate_cloth`, {
+      const res = await fetch(`${CLOTH_API}/generate_cloth`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ person: personBase64, cloth_type: "upper", prompt }),
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true",  // prevents ngrok interstitial page
+        },
+        body: JSON.stringify({
+          prompt: prompt.trim(),
+          num_steps: 30,
+          guidance_scale: 7.5,
+          seed: Math.floor(Math.random() * 99999),
+        }),
       });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Server error ${res.status}: ${text.slice(0, 200)}`);
+      }
+
       const data = await res.json();
-      if (data.error) alert(data.error);
-      else setGeneratedCloth(data.url + "?t=" + Date.now());
-    } catch { alert("Failed to generate clothing."); }
+
+      if (data.error) {
+        setGenError(data.error);
+        console.error("Generation error from server:", data.error);
+      } else if (data.image) {
+        // Handles both full data URI and raw base64
+        const src = toDataURI(data.image, "image/png");
+        setGeneratedCloth(src);
+      } else {
+        setGenError("Server returned no image. Check Colab logs.");
+      }
+
+    } catch (err: any) {
+      console.error("Cloth generation fetch error:", err);
+      setGenError(err.message ?? "Could not reach generation server.");
+    }
+
     setGeneratingCloth(false);
   };
 
+  // ── Approve generated cloth for try-on ──
   const approveCloth = () => {
     if (!generatedCloth) return;
-    // Treat the generated cloth as a custom cloth (base64 or URL)
-    setCustomCloth(null);
+    setCustomCloth(generatedCloth);  // store as active cloth
     setClothAsset(null);
     setApproved(true);
+    setGenError(null);
+    setStep(s => s < 3 ? 3 : s);
   };
 
-  // When approved we use generatedCloth as the cloth source in the API call
-  const clothSrcForApi = (approved && generatedCloth) ? generatedCloth : activeClothesSrc;
+  // ── Redo generation ──
+  const redoGenerate = () => {
+    setGeneratedCloth(null);
+    setApproved(false);
+    setGenError(null);
+    if (approved) setCustomCloth(null);
+    generateClothing();
+  };
 
-  // ── Try-on ──
+  // ── Download result image reliably (works better than plain anchor for API URLs) ──
+  const downloadResult = async () => {
+    if (!result || downloading) return;
+    setDownloading(true);
+
+    try {
+      const res = await fetch(result);
+      if (!res.ok) {
+        throw new Error(`Download failed with status ${res.status}`);
+      }
+
+      const blob = await res.blob();
+      const fileExt = blob.type.includes("png") ? "png" : "jpg";
+      const objectUrl = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = `tryon-result.${fileExt}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      URL.revokeObjectURL(objectUrl);
+    } catch (err: any) {
+      console.error("Download failed:", err);
+      alert("Could not download this image directly. This can happen when the image server blocks cross-origin downloads.");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isFullscreen) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsFullscreen(false);
+    };
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isFullscreen]);
+
+  // ── Try-on via college GPU Flask ──
   const generatePreview = async () => {
-    if (!personSrc || !clothSrcForApi) return alert("Select model & clothing first.");
-    setLoading(true); setResult(null);
+    if (!personSrc || !activeClothesSrc) return alert("Select a model and a garment first.");
+    setLoading(true);
+    setResult(null);
+
     try {
       const personBase64 = personSrc.startsWith("data:")
-        ? personSrc.split(",")[1]
+        ? extractBase64(personSrc)
         : await urlToBase64(personSrc);
-      const clothBase64 = clothSrcForApi.startsWith("data:")
-        ? clothSrcForApi.split(",")[1]
-        : await urlToBase64(clothSrcForApi);
-      const res = await fetch(`${API}/tryon`, {
+
+      const clothBase64 = activeClothesSrc.startsWith("data:")
+        ? extractBase64(activeClothesSrc)
+        : await urlToBase64(activeClothesSrc);
+
+      const res = await fetch(`${TRYON_API}/tryon`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ person: personBase64, cloth: clothBase64, cloth_type: "upper", bg_option: "original" }),
+        body: JSON.stringify({
+          person: personBase64,
+          cloth: clothBase64,
+          cloth_type: "upper",
+          bg_option: "original",
+        }),
       });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Try-on server error ${res.status}: ${text.slice(0, 200)}`);
+      }
+
       const data = await res.json();
-      if (data.error) alert(data.error);
-      else setResult(data.url + "?t=" + Date.now());
-    } catch { alert("Failed to connect to backend."); }
+      if (data.error) {
+        alert(`Try-on failed: ${data.error}`);
+      } else if (data.url) {
+        setResult(data.url + "?t=" + Date.now());
+      } else if (data.image) {
+        setResult(toDataURI(data.image, "image/jpeg"));
+      } else {
+        alert("No result returned from try-on server.");
+      }
+
+    } catch (err: any) {
+      console.error("Try-on error:", err);
+      alert(`Failed to connect to try-on backend.\n\n${err.message}`);
+    }
+
     setLoading(false);
   };
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", background: "#26262a", minHeight: "100vh", color: "#f0ede8" }}>
       <style>{`
@@ -262,13 +405,43 @@ export default function TryOn() {
         @keyframes spin{ to{ transform:rotate(360deg); } }
         .divider { height:1px; background:linear-gradient(90deg,transparent,#2a2a38,transparent); margin:6px 0; }
         .empty-state { width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#2e2e38;font-size:13px; }
+        .approved-badge {
+          display:inline-flex; align-items:center; gap:5px;
+          background:#c8a97e18; border:1px solid #c8a97e40; border-radius:20px;
+          padding:3px 10px; font-size:11px; color:#c8a97e; font-weight:600;
+          margin-top:6px;
+        }
+        .error-box {
+          background:#3a1a1a; border:1px solid #6b2a2a; border-radius:8px;
+          padding:8px 12px; font-size:12px; color:#f09090; margin-top:8px;
+          line-height:1.5; word-break:break-word;
+        }
+        .result-actions {
+          position:absolute; top:12px; right:12px; display:flex; gap:8px;
+        }
+        .result-action-btn {
+          background:rgba(12,12,12,0.82); backdrop-filter:blur(8px); border:1px solid #2a2a38;
+          color:#f0ede8; border-radius:8px; padding:6px 10px; font-size:11px; font-weight:600;
+          text-decoration:none; letter-spacing:.03em; cursor:pointer;
+        }
+        .result-action-btn:hover { background:rgba(26,26,30,0.92); }
+        .result-action-btn:disabled { opacity:.45; cursor:not-allowed; }
+        .fullscreen-overlay {
+          position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:9999;
+          display:flex; align-items:center; justify-content:center; padding:24px;
+        }
+        .fullscreen-image {
+          max-width:100%; max-height:100%; object-fit:contain;
+        }
+        .fullscreen-back {
+          position:absolute; top:18px; left:18px;
+        }
       `}</style>
 
-      {/* Header */}
+      {/* ── Header ── */}
       <header style={{ borderBottom: "1px solid #1a1a22", padding: "18px 32px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div>
-          <div style={{ fontFamily: "'DM Serif Display',serif", fontSize: "22px", letterSpacing: "-.02em" }}>VIRTUAL TRY-ON</div>
-
+        <div style={{ fontFamily: "'DM Serif Display',serif", fontSize: "22px", letterSpacing: "-.02em" }}>
+          VIRTUAL TRY-ON
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           {[1, 2, 3].map((n) => (
@@ -286,11 +459,11 @@ export default function TryOn() {
         </div>
       </header>
 
-      {/* Main */}
+      {/* ── Main ── */}
       <main style={{ maxWidth: 1100, margin: "0 auto", padding: "25px 20px 40px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
 
-          {/* LEFT COLUMN */}
+          {/* ── LEFT COLUMN ── */}
           <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
 
             {/* Step 1 – Choose Model */}
@@ -329,6 +502,7 @@ export default function TryOn() {
             <section>
               <div className="section-tag"><span className="dot" />Step 02</div>
               <div className="section-title">Pick a Garment</div>
+
               <div className="card-grid" style={{ marginBottom: 10 }}>
                 {DATASET.clothes.map((c) => (
                   <div
@@ -350,36 +524,71 @@ export default function TryOn() {
               >
                 <span style={{ fontSize: 18 }}>↑</span>
                 <span>Upload your own garment</span>
-                {customCloth && (
+                {customCloth && !approved && (
                   <span style={{ color: "#baa792", marginLeft: "auto", fontSize: 11 }}>✓ Uploaded</span>
                 )}
               </div>
 
-              {/* AI Generate */}
-              <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 11, color: "#5a5a6a", fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", marginBottom: 8 }}>— or generate with AI —</div>
+              {/* ── AI Generate section ── */}
+              <div style={{ marginTop: 14 }}>
+                <div style={{ fontSize: 11, color: "#5a5a6a", fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", marginBottom: 8 }}>
+                  — or generate with AI —
+                </div>
+
                 <textarea
                   rows={2}
                   placeholder="e.g. 'A slim-fit navy linen blazer with gold buttons…'"
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      if (!generatingCloth) generateClothing();
+                    }
+                  }}
                 />
+
                 <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                  <button className="btn-ghost" onClick={generateClothing} disabled={generatingCloth || !personSrc}>
-                    {generatingCloth ? "Generating…" : "✦ Generate"}
+                  <button
+                    className="btn-ghost"
+                    onClick={generateClothing}
+                    disabled={generatingCloth || !prompt.trim()}
+                  >
+                    {generatingCloth
+                      ? <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ width: 12, height: 12, borderRadius: "50%", border: "2px solid #c8a97e60", borderTopColor: "#c8a97e", animation: "spin 0.8s linear infinite", display: "inline-block" }} />
+                          Generating…
+                        </span>
+                      : "✦ Generate"
+                    }
                   </button>
+
                   {generatedCloth && !approved && (
                     <>
                       <button className="btn-ghost" onClick={approveCloth}>✓ Use This</button>
-                      <button className="btn-outline" onClick={generateClothing}>↺ Redo</button>
+                      <button className="btn-outline" onClick={redoGenerate} disabled={generatingCloth}>↺ Redo</button>
                     </>
                   )}
+
+                  {approved && (
+                    <button className="btn-outline" onClick={redoGenerate} disabled={generatingCloth}>↺ Regenerate</button>
+                  )}
                 </div>
+
+                {/* Error message */}
+                {genError && (
+                  <div className="error-box">⚠ {genError}</div>
+                )}
+
+                {/* Approved badge */}
+                {approved && (
+                  <div className="approved-badge">✓ AI-generated cloth ready for try-on</div>
+                )}
               </div>
             </section>
           </div>
 
-          {/* RIGHT COLUMN */}
+          {/* ── RIGHT COLUMN ── */}
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 
             {/* Preview cards */}
@@ -400,7 +609,7 @@ export default function TryOn() {
                     : <div className="empty-state">No garment</div>}
                 </div>
                 <div className="preview-label">
-                  GARMENT · {(approved && generatedCloth) ? "GENERATED" : activeClothLabel.toUpperCase()}
+                  GARMENT · {activeClothLabel.toUpperCase()}
                 </div>
               </div>
             </div>
@@ -410,7 +619,7 @@ export default function TryOn() {
               {loading ? "Processing… (1–2 min)" : "✦ Generate Try-On"}
             </button>
 
-            {/* Result */}
+            {/* Result panel */}
             <div className="result-panel">
               {loading ? (
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
@@ -427,24 +636,35 @@ export default function TryOn() {
                 </div>
               )}
               {result && (
-                <a
-                  href={result}
-                  download="tryon-result.jpg"
-                  style={{
-                    position: "absolute", bottom: 12, right: 12,
-                    background: "rgba(12, 12, 12, 0.8)", backdropFilter: "blur(8px)",
-                    border: "1px solid #2a2a38", borderRadius: 8,
-                    padding: "6px 12px", fontSize: 11, color: "#c8a97e",
-                    fontWeight: 600, textDecoration: "none", letterSpacing: ".04em",
-                  }}
-                >
-                  ↓ Save
-                </a>
+                <>
+                  <div className="result-actions">
+                    <button className="result-action-btn" onClick={() => setIsFullscreen(true)}>
+                      ↗ Fullscreen
+                    </button>
+                  </div>
+                  <button
+                    className="result-action-btn"
+                    onClick={downloadResult}
+                    disabled={downloading}
+                    style={{ position: "absolute", bottom: 12, right: 12, color: "#c8a97e" }}
+                  >
+                    {downloading ? "Downloading…" : "↓ Save"}
+                  </button>
+                </>
               )}
             </div>
           </div>
         </div>
       </main>
+
+      {isFullscreen && result && (
+        <div className="fullscreen-overlay">
+          <button className="result-action-btn fullscreen-back" onClick={() => setIsFullscreen(false)}>
+            ← Back
+          </button>
+          <img src={result} alt="try-on full screen" className="fullscreen-image" />
+        </div>
+      )}
 
       {/* Hidden file inputs */}
       <input ref={personRef} type="file" hidden accept="image/*" onChange={(e) => handleUpload(e, "person")} />
@@ -452,3 +672,4 @@ export default function TryOn() {
     </div>
   );
 }
+
