@@ -104,19 +104,36 @@ export default function TryOn() {
 
   // ── Select preset model ──
   const selectModel = (m: Asset) => {
-    setPersonAsset(m);
-    setCustomPerson(null);
-    setStep(s => s < 2 ? 2 : s);
+    if (personAsset?.id === m.id) {
+      // Toggle: deselect if already selected
+      setPersonAsset(null);
+      setCustomPerson(null);
+    } else {
+      // Select new model
+      setPersonAsset(m);
+      setCustomPerson(null);
+      setStep(s => s < 2 ? 2 : s);
+    }
   };
 
   // ── Select preset cloth ──
   const selectCloth = (c: Asset) => {
-    setClothAsset(c);
-    setCustomCloth(null);
-    setGeneratedCloth(null);
-    setApproved(false);
-    setGenError(null);
-    setStep(s => s < 3 ? 3 : s);
+    if (clothAsset?.id === c.id) {
+      // Toggle: deselect if already selected
+      setClothAsset(null);
+      setCustomCloth(null);
+      setGeneratedCloth(null);
+      setApproved(false);
+      setGenError(null);
+    } else {
+      // Select new cloth
+      setClothAsset(c);
+      setCustomCloth(null);
+      setGeneratedCloth(null);
+      setApproved(false);
+      setGenError(null);
+      setStep(s => s < 3 ? 3 : s);
+    }
   };
 
   // ── Upload handler ──
