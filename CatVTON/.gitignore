@@ -1,0 +1,4 @@
+attention_finetuned_checkpoints/*
+cache/*
+__pycache__/
+*.pyc
