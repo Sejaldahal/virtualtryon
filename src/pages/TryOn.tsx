@@ -86,6 +86,12 @@ export default function TryOn() {
   const [genError, setGenError]               = useState<string | null>(null);
   const [downloading, setDownloading]         = useState(false);
   const [isFullscreen, setIsFullscreen]       = useState(false);
+  const [feedbackName, setFeedbackName]       = useState("");
+  const [feedbackRating, setFeedbackRating]   = useState<"" | number>("");
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [feedbackSaving, setFeedbackSaving]   = useState(false);
+  const [feedbackStatus, setFeedbackStatus]   = useState<string | null>(null);
+  const [feedbackOpen, setFeedbackOpen]       = useState(false);
 
   const personRef = useRef<HTMLInputElement>(null);
   const clothRef  = useRef<HTMLInputElement>(null);
@@ -259,6 +265,41 @@ export default function TryOn() {
       alert("Could not download this image directly. This can happen when the image server blocks cross-origin downloads.");
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const submitFeedback = async () => {
+    if (!feedbackMessage.trim()) {
+      setFeedbackStatus("Please write your feedback before submitting.");
+      return;
+    }
+
+    setFeedbackSaving(true);
+    setFeedbackStatus(null);
+
+    try {
+      const res = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: feedbackName.trim() || "Anonymous",
+          rating: feedbackRating === "" ? null : feedbackRating,
+          message: feedbackMessage.trim(),
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || "Could not submit feedback.");
+      }
+
+      setFeedbackStatus("Saved to feedback.");
+      setFeedbackMessage("");
+      setFeedbackRating("");
+    } catch (err: any) {
+      setFeedbackStatus(err?.message || "Could not submit feedback.");
+    } finally {
+      setFeedbackSaving(false);
     }
   };
 
@@ -452,6 +493,72 @@ export default function TryOn() {
         }
         .fullscreen-back {
           position:absolute; top:18px; left:18px;
+        }
+        .feedback-card {
+          margin-top: 16px;
+          background:#121218;
+          border:1px solid #1f1f2b;
+          border-radius:14px;
+          padding:14px;
+        }
+        .feedback-title {
+          font-size:13px;
+          font-weight:700;
+          color:#f0ede8;
+          margin-bottom:10px;
+          letter-spacing:.02em;
+        }
+        .feedback-row {
+          display:grid;
+          grid-template-columns:1fr 120px;
+          gap:8px;
+          margin-bottom:8px;
+        }
+        @media(max-width:640px){
+          .feedback-row { grid-template-columns:1fr; }
+        }
+        .feedback-input,
+        .feedback-select {
+          width:100%;
+          background:#13131a;
+          border:1.5px solid #2a2a35;
+          border-radius:10px;
+          padding:10px 12px;
+          color:#f0ede8;
+          font-size:13px;
+          font-family:'DM Sans',sans-serif;
+          outline:none;
+        }
+        .feedback-input:focus,
+        .feedback-select:focus { border-color:#c8a97e80; }
+        .feedback-status {
+          margin-top:8px;
+          font-size:12px;
+          color:#8f8fa3;
+        }
+        .feedback-fab {
+          position: fixed;
+          right: 16px;
+          bottom: 16px;
+          z-index: 1000;
+          background: linear-gradient(135deg, #c8a97e, #a8865a);
+          color: #0d0d0f;
+          border: none;
+          border-radius: 999px;
+          padding: 10px 16px;
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: .04em;
+          cursor: pointer;
+          box-shadow: 0 10px 30px rgba(0,0,0,.35);
+        }
+        .feedback-fab:hover { opacity: .92; }
+        .feedback-panel {
+          position: fixed;
+          right: 16px;
+          bottom: 64px;
+          width: min(360px, calc(100vw - 32px));
+          z-index: 1000;
         }
       `}</style>
 
@@ -670,6 +777,7 @@ export default function TryOn() {
                 </>
               )}
             </div>
+
           </div>
         </div>
       </main>
@@ -682,6 +790,58 @@ export default function TryOn() {
           <img src={result} alt="try-on full screen" className="fullscreen-image" />
         </div>
       )}
+
+      {feedbackOpen && (
+        <section className="feedback-card feedback-panel">
+          <div className="feedback-title">Quick Feedback</div>
+          <div className="feedback-row">
+            <input
+              className="feedback-input"
+              placeholder="Name (optional)"
+              value={feedbackName}
+              onChange={(e) => setFeedbackName(e.target.value)}
+              maxLength={80}
+            />
+            <select
+              className="feedback-select"
+              value={feedbackRating}
+              onChange={(e) => setFeedbackRating(e.target.value ? Number(e.target.value) : "")}
+            >
+              <option value="">Rating</option>
+              <option value="5">5/5</option>
+              <option value="4">4/5</option>
+              <option value="3">3/5</option>
+              <option value="2">2/5</option>
+              <option value="1">1/5</option>
+            </select>
+          </div>
+          <textarea
+            rows={3}
+            placeholder="Tell us what worked well or what should improve"
+            value={feedbackMessage}
+            onChange={(e) => setFeedbackMessage(e.target.value)}
+            maxLength={2000}
+          />
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
+            <button className="btn-outline" onClick={() => setFeedbackOpen(false)} style={{ maxWidth: 120 }}>
+              Close
+            </button>
+            <button
+              className="btn-ghost"
+              onClick={submitFeedback}
+              disabled={feedbackSaving || !feedbackMessage.trim()}
+              style={{ maxWidth: 180 }}
+            >
+              {feedbackSaving ? "Saving..." : "Submit Feedback"}
+            </button>
+          </div>
+          {feedbackStatus && <div className="feedback-status">{feedbackStatus}</div>}
+        </section>
+      )}
+
+      <button className="feedback-fab" onClick={() => setFeedbackOpen((v) => !v)}>
+        {feedbackOpen ? "Hide Feedback" : "Feedback"}
+      </button>
 
       {/* Hidden file inputs */}
       <input ref={personRef} type="file" hidden accept="image/*" onChange={(e) => handleUpload(e, "person")} />
